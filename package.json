@@ -246,6 +246,8 @@
 	"scripts": {
 		"vscode:prepublish": "npm run build",
 		"build": "esbuild ./server/src/server.ts --bundle --platform=node --format=esm --outfile=out/server.js --external:vscode --packages=external --metafile=out/meta.json --minify",
+		"prepackage": "npm run build",
+		"package": "vsce package --dependencies -o out/rdfusion.vsix",
 		"compile": "tsc -b",
 		"watch": "tsc -b -w",
 		"lint": "eslint",
