@@ -164,9 +164,11 @@ const jsonldProvider = new JsonLdPrefixCompletionProvider(prefixRegistry, connec
 const ttlProvider    = new TtlPrefixCompletionProvider(prefixRegistry, connection, serverConfigSettings);
 
 const termProvider   = new TermProvider(dataManager, prefixRegistry, serverConfigSettings);
-await termProvider.init();
 
-// then plug into your completion pipeline:
+(async function initialize() {
+	await termProvider.init();
+})();
+
 const ttlTermProvider    = new TtlTermCompletionProvider(termProvider, connection, serverConfigSettings);
 const jsonldTermProvider = new JsonLdTermCompletionProvider(termProvider, prefixRegistry, connection, serverConfigSettings);
 
