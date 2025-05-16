@@ -1,0 +1,266 @@
+{
+	"name": "rdfusion",
+	"description": "A language server example",
+	"author": "Microsoft Corporation",
+	"license": "MIT",
+	"version": "1.0.0",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Microsoft/vscode-extension-samples"
+	},
+	"publisher": "vscode-samples",
+	"icon": "logo.png",
+	"galleryBanner": {
+		"color": "#C80000",
+		"theme": "dark"
+	},
+	"categories": [],
+	"keywords": [
+		"multi-root ready"
+	],
+	"engines": {
+		"vscode": "^1.75.0"
+	},
+	"main": "./client/out/extension",
+	"activationEvents": [
+		"onLanguage:turtle",
+		"onLanguage:jsonld"
+	],
+	"contributes": {
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "RDFusion",
+					"title": "RDFusion",
+					"icon": "resources/logo.png"
+				}
+			]
+		},
+		"views": {
+			"RDFusion": [
+				{
+					"id": "fileExplorer",
+					"name": "Files"
+				}
+			]
+		},
+		"languages": [
+			{
+				"id": "turtle",
+				"extensions": [
+					".ttl"
+				],
+				"aliases": [
+					"Turtle"
+				]
+			},
+			{
+				"id": "jsonld",
+				"extensions": [
+					".jsonld"
+				],
+				"aliases": [
+					"JSON-LD",
+					"jsonld"
+				]
+			}
+		],
+		"grammars": [
+			{
+				"language": "jsonld",
+				"scopeName": "source.json",
+				"path": "./syntaxes/json.tmLanguage.json"
+			}
+		],
+		"commands": [
+			{
+				"command": "rdfusion.openFile",
+				"title": "RDFusion: Open File"
+			},
+			{
+				"command": "rdfusion.refreshExplorer",
+				"title": "RDFusion: Refresh Explorer"
+			},
+			{
+				"command": "rdfusion.configureTurtleValidations",
+				"title": "RDFusion: Toggle Turtle Validations"
+			},
+			{
+				"command": "rdfusion.configureTurtleAutocomplete",
+				"title": "RDFusion: Toggle Autocomplete"
+			},
+			{
+				"command": "rdfusion.configureJsonldValidations",
+				"title": "RDFusion: Toggle JSONLD Validations"
+			},
+			{
+				"command": "rdfusion.groupBySubject",
+				"title": "RDFusion: Group By Subject"
+			}
+		],
+		"configuration": {
+			"title": "RDFusion configurations",
+			"properties": {
+				"rdfusion.turtle.validations": {
+					"type": "object",
+					"description": "Enable or disable each validation rule for turtle (TTL)",
+					"default": {
+						"xsdTypeCheck": true,
+						"missingTagCheck": true,
+						"shaclConstraint": true
+					},
+					"properties": {
+						"rdfusion.turtle.validations.xsdTypeCheck": {
+							"type": "boolean",
+							"default": true,
+							"description": "Enable length validation"
+						},
+						"rdfusion.turtle.validations.missingTagCheck": {
+							"type": "boolean",
+							"label": "Enable checking missing language tag or datatype ",
+							"default": true,
+							"description": "Enable syntax validation"
+						},
+						"rdfusion.turtle.validations.shaclConstraint": {
+							"type": "boolean",
+							"default": true,
+							"description": "Enable naming validation"
+						}
+					}
+				},
+				"rdfusion.turtle.autocomplete": {
+					"type": "object",
+					"description": "Enable or disable each validation rule for turtle (TTL)",
+					"default": {
+						"localBased": true,
+						"remoteBased": true,
+						"prefixDeclaration": true
+					},
+					"properties": {
+						"rdfusion.turtle.autocomplete.localBased": {
+							"type": "boolean",
+							"default": true,
+							"description": "Enable local terms autocomplete"
+						},
+						"rdfusion.turtle.autocomplete.remoteBased": {
+							"type": "boolean",
+							"default": true,
+							"description": "Enable remote terms autocomplete"
+						},
+						"rdfusion.turtle.autocomplete.prefixDeclaration": {
+							"type": "boolean",
+							"default": true,
+							"description": "Enable declaring unimported prefix"
+						}
+					}
+				},
+				"rdfusion.jsonld.validations": {
+					"type": "object",
+					"description": "Enable or disable each validation rule for jsonld",
+					"default": {
+						"duplicateId": true,
+						"missingType": true,
+						"undefinedPrefix": true,
+						"missingTagCheck": true,
+						"xsdTypeCheck": true,
+						"emptyLiteral": true,
+						"nonStringLiteral": true,
+						"shaclConstraint": true
+					},
+					"properties": {
+						"rdfusion.jsonld.validations.duplicateId": {
+							"type": "boolean",
+							"default": true,
+							"description": "Warning on repeated @id"
+						},
+						"rdfusion.jsonld.validations.missingType": {
+							"type": "boolean",
+							"default": true,
+							"description": "Warning on nodes without explicit @type"
+						},
+						"rdfusion.jsonld.validations.undefinedPrefix": {
+							"type": "boolean",
+							"default": true,
+							"description": "Warning on usage of prefixes not in the context"
+						},
+						"rdfusion.jsonld.validations.missingTagCheck": {
+							"type": "boolean",
+							"default": true,
+							"description": "Warning on missing @type/@language for @value"
+						},
+						"rdfusion.jsonld.validations.xsdTypeCheck": {
+							"type": "boolean",
+							"default": true,
+							"description": "XSD-Datatype validation"
+						},
+						"rdfusion.jsonld.validations.emptyLiteral": {
+							"type": "boolean",
+							"default": true,
+							"description": "Warning on empty string literals"
+						},
+						"rdfusion.jsonld.validations.nonStringLiteral": {
+							"type": "boolean",
+							"default": true,
+							"description": "Warning on literals missing datatype or language"
+						},
+						"rdfusion.jsonld.validations.shaclConstraint": {
+							"type": "boolean",
+							"default": true,
+							"description": "SHACL constraint enforcement"
+						}
+					}
+				},
+				"rdfusion.jsonld.autocomplete": {
+					"type": "object",
+					"description": "Enable or disable each validation rule for turtle (TTL)",
+					"default": {
+						"localBased": true,
+						"remoteBased": true,
+						"prefixDeclaration": true
+					},
+					"properties": {
+						"rdfusion.jsonld.autocomplete.localBased": {
+							"type": "boolean",
+							"default": true,
+							"description": "Enable local terms autocomplete"
+						},
+						"rdfusion.jsonld.autocomplete.remoteBased": {
+							"type": "boolean",
+							"default": true,
+							"description": "Enable syntax validation"
+						},
+						"rdfusion.jsonld.autocomplete.prefixDeclaration": {
+							"type": "boolean",
+							"default": true,
+							"description": "Enable naming validation"
+						}
+					}
+				}
+			}
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -b",
+		"watch": "tsc -b -w",
+		"lint": "eslint",
+		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
+		"test": "sh ./scripts/e2e.sh"
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.13.0",
+		"@stylistic/eslint-plugin": "^2.9.0",
+		"@types/mocha": "^10.0.6",
+		"@types/node": "^20",
+		"electron-rebuild": "^3.2.9",
+		"eslint": "^9.13.0",
+		"mocha": "^10.3.0",
+		"typescript": "^5.8.2",
+		"typescript-eslint": "^8.26.0"
+	},
+	"dependencies": {
+		"@comunica/types": "^4.2.0",
+		"@types/node-fetch": "^2.6.12",
+		"lru-cache": "^11.1.0"
+	}
+}
