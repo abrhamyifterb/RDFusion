@@ -15,9 +15,7 @@
 		"theme": "dark"
 	},
 	"categories": [],
-	"keywords": [
-		"multi-root ready"
-	],
+	"keywords": ["rdf", "turtle", "jsonld","lsp"],
 	"engines": {
 		"vscode": "^1.75.0"
 	},
