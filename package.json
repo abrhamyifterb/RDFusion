@@ -99,11 +99,13 @@
 			},
 			{
 				"command": "rdfusion.groupBySubject",
-				"title": "RDFusion: Group By Subject"
+				"title": "RDFusion: Group By Subject",
+				"enablement": "editorLangId == turtle"
 			},
 			{
 				"command": "rdfusion.filterTriples",
-				"title": "RDFusion: Filter Triples"
+				"title": "RDFusion: Filter Triples",
+				"enablement": "editorLangId == turtle"
 			}
 		],
 		"configuration": {
@@ -248,7 +250,6 @@
 		}
 	},
 	"scripts": {
-		"vscode:prepublish": "npm run build",
 		"build:server": "esbuild ./server/src/server.ts --bundle --platform=node --format=cjs --outfile=out/server.js --external:ky-universal --external:vscode --minify",
 		"build:client": "esbuild ./client/src/extension.ts --bundle --platform=node --target=node16 --outfile=out/extension.js --external:vscode --minify",
 		"build": "npm run build:client && npm run build:server",

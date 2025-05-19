@@ -6,7 +6,6 @@ import { FilterQuads } from './turtle/filter-triples';
 import { GroupFormatter } from '../grouping/turtle/group-by-subject';
 import { Quad } from 'n3';
 
-
 export class FilterTriplesCommand {
 	constructor(
 		private dataManager: DataManager,

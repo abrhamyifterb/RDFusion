@@ -22,5 +22,7 @@ As you type prefix names, RDFusion suggests terms from:
 - **Remote registries** (LOV API, Direct Dereference)  
 - RUN **“RDFusion: Toggle Autocomplete”** to switch term completion between local, remote, or both sources. Also to enable/disable declaration of undeclared prefix.
 
-### Group Triples by Subject  
+### Triiple Management  
 - RUN **“RDFusion: Group by Subject”** to transform flat Turtle into grouped blocks.
+- RUN **“RDFusion: Filter Triples”** to filter triples based on user specified subject, predicate, and object; supporting both full IRIs and prefixed names, as well as literal values. Filtered triples are shown in new untitled VS Code editor tab. 
+
