@@ -10,9 +10,9 @@
 		"strict": true,
 		"outDir": "out",
 		"rootDir": "src",
-		"types": ["node", "node-fetch"] ,
+		"typeRoots": ["types", "node_modules/@types"],
 		"skipLibCheck": true, 
 	},
-	"include": ["src"],
+	"include": ["src", "types"],
 	"exclude": ["node_modules", ".vscode-test"]
 }

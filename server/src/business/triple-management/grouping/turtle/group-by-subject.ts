@@ -163,7 +163,16 @@ export class GroupFormatter {
       const entries = Array.from(byPred.entries());
       entries.forEach(([pk,objs],i) => {
         const pred = pk==='a' ? 'a' : abbr(pk);
-        const txts = objs.map(render).join(', ');
+
+        const seen = new Set<string>();
+        const unique = objs.filter(o => {
+          const rep = render(o);
+          if (seen.has(rep)) return false;
+          seen.add(rep);
+          return true;
+        });
+
+        const txts = unique.map(render).join(', ');
         const sep  = i===entries.length-1 ? '.' : ';';
         block += `${pred} ${txts} ${sep}\n    `;
       });
@@ -173,4 +182,6 @@ export class GroupFormatter {
 
     return out.join('\n').trim() + '\n';
   }
+
+  
 }

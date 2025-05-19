@@ -25,7 +25,7 @@ export class TtlTermCompletionProvider implements ICompletionProvider {
 		documents: TextDocuments<TextDocument>
 	): Promise<CompletionItem[]> {
 		const doc = documents.get(params.textDocument.uri);
-		if (!doc) return [];
+		if (!doc) {return [];}
 	
 		const lineText = doc.getText({
 			start: { line: params.position.line, character: 0 },
@@ -34,7 +34,7 @@ export class TtlTermCompletionProvider implements ICompletionProvider {
 	
 		// eslint-disable-next-line no-useless-escape
 		const m = lineText.match(/([A-Za-z][\w-]*)\:([\w]*)$/);
-		if (!m) return [];
+		if (!m) {return [];}
 	
 		const [, prefix, fragment] = m;
 		const terms = await this.termProvider.getTermsFor(prefix, this.connection);

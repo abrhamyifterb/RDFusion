@@ -1,4 +1,4 @@
-import { Connection } from 'vscode-languageserver/node';
+import { Connection } from 'vscode-languageserver/node.js';
 import { IShapeExtractor, ShaclShape } from './ishape-extractor';
 import { ShaclShapeExtractor } from './shacl-shape-extractor.js';
 import { JsonldParsedGraph, ParsedGraph } from '../irdf-parser';

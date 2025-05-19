@@ -12,7 +12,7 @@ export function extractContextMap(root: Node | undefined, input: string): Map<st
 			const [kNode, vNode] = e.children!;
 			const term = input.slice(kNode.offset, kNode.offset + kNode.length).replace(/"/g,"");
 			let iri  = input.slice(vNode.offset, vNode.offset + vNode.length).replace(/^"|"$/g,"");
-			if (iri.endsWith("/")) iri = iri.slice(0,-1);
+			if (iri.endsWith("/")) {iri = iri.slice(0,-1);}
 			map.set(term, iri);
 		}
 		}
@@ -29,10 +29,10 @@ export function extractDefinitionIds(
 		input.slice(prop.children![0].offset, prop.children![0].offset + prop.children![0].length) === '"@graph"'
 	)?.children?.[1];
 
-	if (!graphArr || graphArr.type !== "array") return defs;
+	if (!graphArr || graphArr.type !== "array") {return defs;}
 
 	for (const elem of graphArr.children ?? []) {
-		if (elem.type !== "object") continue;
+		if (elem.type !== "object") {continue;}
 		for (const prop of elem.children ?? []) {
 			const [kNode, vNode] = prop.children!;
 			if (input.slice(kNode.offset, kNode.offset + kNode.length) === '"@id"') {

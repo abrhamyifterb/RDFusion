@@ -1,4 +1,4 @@
-import { Diagnostic, TextDocuments } from "vscode-languageserver/node";
+import { Diagnostic, TextDocuments } from "vscode-languageserver/node.js";
 import { DataManager } from "../../data/data-manager";
 import { IRdfValidator } from './irdf-validator';
 import { TurtleValidator } from './turtle/ttl-validator.js';

@@ -1,6 +1,5 @@
 {
 	"name": "rdfusion",
-	"type":"module",
 	"description": "RDFusion brings RDF editing and validation directly into VS Code.",
 	"author": "RDFusion",
 	"license": "MIT",
@@ -10,6 +9,7 @@
 		"url": "https://github.com/Microsoft/vscode-extension-samples"
 	},
 	"publisher": "RDFusion",
+	"workspaces": ["client", "server"],
 	"icon": "resources/logo.png",
 	"galleryBanner": {
 		"color": "#C80000",
@@ -25,7 +25,7 @@
 	"engines": {
 		"vscode": "^1.75.0"
 	},
-	"main": "./client/out/extension",
+	"main": "out/extension.js",
 	"activationEvents": [
 		"onLanguage:turtle",
 		"onLanguage:jsonld"
@@ -100,6 +100,10 @@
 			{
 				"command": "rdfusion.groupBySubject",
 				"title": "RDFusion: Group By Subject"
+			},
+			{
+				"command": "rdfusion.filterTriples",
+				"title": "RDFusion: Filter Triples"
 			}
 		],
 		"configuration": {
@@ -245,13 +249,14 @@
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run build",
-		"build": "esbuild ./server/src/server.ts --bundle --platform=node --format=esm --outfile=out/server.js --external:vscode --packages=external --metafile=out/meta.json --minify",
+		"build:server": "esbuild ./server/src/server.ts --bundle --platform=node --format=cjs --outfile=out/server.js --external:ky-universal --external:vscode --minify",
+		"build:client": "esbuild ./client/src/extension.ts --bundle --platform=node --target=node16 --outfile=out/extension.js --external:vscode --minify",
+		"build": "npm run build:client && npm run build:server",
 		"prepackage": "npm run build",
-		"package": "vsce package --dependencies -o out/rdfusion.vsix",
+		"package": "vsce package --dependencies -o rdfusion-1.0.0.vsix",
 		"compile": "tsc -b",
 		"watch": "tsc -b -w",
 		"lint": "eslint",
-		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
 		"test": "sh ./scripts/e2e.sh"
 	},
 	"devDependencies": {
@@ -269,6 +274,23 @@
 	"dependencies": {
 		"@comunica/types": "^4.2.0",
 		"@types/node-fetch": "^2.6.12",
-		"lru-cache": "^11.1.0"
+		"lru-cache": "^11.1.0",
+		"@comunica/query-sparql": "^4.0.2",
+		"@rdfjs/data-model": "^2.1.0",
+		"@rdfjs/dataset": "^2.0.2",
+		"@rdfjs/types": "^2.0.1",
+		"@zazuko/env-node": "^3.0.0",
+		"bcp-47": "^2.1.0",
+		"jsonc-parser": "^3.2.1",
+		"jsonld": "^8.3.3",
+		"millan": "^5.4.0",
+		"n3": "^1.24.2",
+		"node-fetch": "^3.3.2",
+		"rdf-dereference": "^4.0.0",
+		"shacl-engine": "^1.0.2",
+		"glob": "^11.0.0",
+		"vscode-languageclient": "^9.0.1",
+		"vscode-languageserver": "^9.0.1",
+		"vscode-languageserver-textdocument": "^1.0.11"
 	}
 }

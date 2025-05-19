@@ -1,6 +1,9 @@
-// business/grouping/groupBySubjectCommand.ts
-
-import { Connection, TextEdit, Range, Position, TextDocuments } from 'vscode-languageserver';
+import { Connection, 
+  TextEdit, 
+  Range, 
+  Position, 
+  TextDocuments 
+} from 'vscode-languageserver';
 import { DataManager } from '../../../data/data-manager';
 import { GroupFormatter } from './turtle/group-by-subject.js';
 import { ParsedGraph } from '../../../data/irdf-parser';

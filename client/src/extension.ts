@@ -55,7 +55,7 @@ class InlineCompletionProvider implements vscode.InlineCompletionItemProvider {
 export function activate(context: ExtensionContext) {
 	// The server is implemented in node
 	const serverModule = context.asAbsolutePath(
-		path.join('server', 'out', 'server.js')
+		path.join('out', 'server.js')
 	);
 
 	// If the extension is launched in debug mode then the debug server options are used
@@ -294,6 +294,55 @@ export function activate(context: ExtensionContext) {
 			});
 		})
 	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('rdfusion.filterTriples', async () => {
+			const editor = vscode.window.activeTextEditor;
+			if (!editor) {
+				vscode.window.showErrorMessage('Open an RDF document first.');
+				return;
+			}
+			const uri = editor.document.uri.toString();
+		
+			const ask = (label: string) =>
+				vscode.window.showInputBox({ prompt: label, placeHolder: 'e.g. ex:Bart, foaf:name, "Simpson"' });
+		
+			const subj = await ask('Enter one or more subjects (comma-separated):');
+			const pred = await ask('Enter one or more predicates (comma-separated):');
+			const obj  = await ask('Enter one or more objects (comma-separated):');
+		
+			const parseList = (userInput?: string) =>
+				userInput
+				? userInput.split(',')
+					.map(s => s.trim())
+					.filter(s => s.length > 0)
+				: [];
+		
+			const subjectFilters   = parseList(subj);
+			const predicateFilters = parseList(pred);
+			const objectFilters    = parseList(obj);
+		
+			const filteredText: string = await client.sendRequest(
+				'workspace/executeCommand',
+				{
+				command: 'rdf.filterTriples',
+				arguments: [{
+					uri,
+					subjectFilters,
+					predicateFilters,
+					objectFilters
+				}]
+				}
+			);
+	
+			const doc = await vscode.workspace.openTextDocument({
+				language: 'turtle',
+				content: filteredText
+			});
+			vscode.window.showTextDocument(doc, { preview: false });
+		})
+	);
+
 	// const inlineCompletionProvider = new InlineCompletionProvider();
 	// vscode.languages.registerInlineCompletionItemProvider(
 	//   { scheme: 'file', language: 'turtle' },

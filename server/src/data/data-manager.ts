@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Connection } from 'vscode-languageserver/node';
+import { Connection } from 'vscode-languageserver/node.js';
 import { CachedParsedGraph, JsonldParsedGraph, ParsedGraph } from './irdf-parser';
 import { RDFParser } from './rdf-parser.js';
 import { Cache } from './cache/lru-cache';

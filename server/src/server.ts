@@ -37,6 +37,7 @@ import { JsonLdTermCompletionProvider } from './business/autocomplete/term-compl
 import { ShaclRegistry } from './business/autocomplete/shacl-based/shacl-registry.js';
 import { RDFusionConfigSettings } from './utils/irdfusion-config-settings.js';
 import { GroupBySubjectCommand } from './business/triple-management/grouping/group-by-subject-command.js';
+import { FilterTriplesCommand } from './business/triple-management/filtering/filter-triples-command.js';
 // import { ShaclCompletionProvider } from './business/autocomplete/shacl-based/shacl-completion-provider.js';
 // import { DocumentCache } from './business/autocomplete/shacl-based/document-cache.js';
 
@@ -55,6 +56,49 @@ let serverConfigSettings: RDFusionConfigSettings = {
 	turtle: { validations: {}, autocomplete: {} },
 	jsonld: { validations: {}, autocomplete: {} }
 };
+
+
+
+const cache = new Cache<string, any>(100);
+
+const dataManager = new DataManager(cache, connection);
+
+const shapeManager = new ShapeManager(connection);
+
+const validationManager = new ValidationManager(dataManager, shapeManager, documents, serverConfigSettings);
+
+const prefixFetcher = new Fetcher();
+const prefixRegistry = new PrefixRegistry(prefixFetcher);
+const jsonldProvider = new JsonLdPrefixCompletionProvider(prefixRegistry, connection, serverConfigSettings);
+const ttlProvider    = new TtlPrefixCompletionProvider(prefixRegistry, connection, serverConfigSettings);
+
+const termProvider   = new TermProvider(dataManager, prefixRegistry, serverConfigSettings);
+
+termProvider.init();
+
+
+
+const groupCommand   = new GroupBySubjectCommand(
+	dataManager, connection, documents
+);
+
+const filterCommand = new FilterTriplesCommand(dataManager, connection);
+
+
+
+const ttlTermProvider    = new TtlTermCompletionProvider(termProvider, connection, serverConfigSettings);
+const jsonldTermProvider = new JsonLdTermCompletionProvider(termProvider, prefixRegistry, connection, serverConfigSettings);
+
+
+const initialShapes  = shapeManager.getGlobalShapes();
+const shaclRegistry = new ShaclRegistry(initialShapes);
+//const docCache  = new DocumentCache();
+//const shaclProvider = new ShaclCompletionProvider(dataManager, docCache, shaclRegistry, connection);
+
+
+const diagnosticCache = new Map<string, { version: number; items: Diagnostic[] }>();
+
+
 
 connection.onInitialize((params: InitializeParams) => {
 	// // console.log('SERVER: onInitialize acessed ....');
@@ -86,7 +130,10 @@ connection.onInitialize((params: InitializeParams) => {
 			},
 			inlineCompletionProvider: true,
 			executeCommandProvider: {
-				commands: ['rdf.groupBySubject']
+				commands: [
+					'rdf.groupBySubject',
+					'rdf.filterTriples'
+				]
 			},
 		}
 	};
@@ -150,34 +197,6 @@ connection.onDidChangeConfiguration(change => {
 });
 
 
-const cache = new Cache<string, any>(100);
-
-const dataManager = new DataManager(cache, connection);
-
-const shapeManager = new ShapeManager(connection);
-
-const validationManager = new ValidationManager(dataManager, shapeManager, documents, serverConfigSettings);
-
-const prefixFetcher = new Fetcher();
-const prefixRegistry = new PrefixRegistry(prefixFetcher);
-const jsonldProvider = new JsonLdPrefixCompletionProvider(prefixRegistry, connection, serverConfigSettings);
-const ttlProvider    = new TtlPrefixCompletionProvider(prefixRegistry, connection, serverConfigSettings);
-
-const termProvider   = new TermProvider(dataManager, prefixRegistry, serverConfigSettings);
-
-(async function initialize() {
-	await termProvider.init();
-})();
-
-const ttlTermProvider    = new TtlTermCompletionProvider(termProvider, connection, serverConfigSettings);
-const jsonldTermProvider = new JsonLdTermCompletionProvider(termProvider, prefixRegistry, connection, serverConfigSettings);
-
-
-const initialShapes  = shapeManager.getGlobalShapes();
-const shaclRegistry = new ShaclRegistry(initialShapes);
-//const docCache  = new DocumentCache();
-//const shaclProvider = new ShaclCompletionProvider(dataManager, docCache, shaclRegistry, connection);
-
 
 connection.onNotification('workspace/parsedRdf', async (params: { uri: string; text: string; version: number }) => {
 	try {
@@ -220,6 +239,7 @@ documents.onDidChangeContent((change) => {
     })
     .catch((err: { message: unknown; }) => connection.console.error(`Error updating ${change.document.uri}: ${err.message}`));
 });
+
 connection.onCompletion(async (params: CompletionParams) => {
 	const doc = documents.get(params.textDocument.uri);
 	if (!doc) {
@@ -256,17 +276,21 @@ connection.onCompletion(async (params: CompletionParams) => {
 // 	return [];
 // });
 
-const groupCommand   = new GroupBySubjectCommand(
-	dataManager, connection, documents
-);
 
 connection.onExecuteCommand(async (params) => {
 	if (params.command === 'rdf.groupBySubject' && params.arguments) {
 		await groupCommand.execute(params.arguments[0] as { uri: string });
 	}
+	else if (params.command === 'rdf.filterTriples') {
+		return filterCommand.execute(params?.arguments?.[0] as {
+			uri: string;
+			subjectFilters:   string[];
+			predicateFilters: string[];
+			objectFilters:    string[];
+		});
+	}
 });
 
-const diagnosticCache = new Map<string, { version: number; items: Diagnostic[] }>();
 
 connection.onRequest('textDocument/diagnostic',	async (params: DocumentDiagnosticParams): Promise<DocumentDiagnosticReport> => {
 		const uri = params.textDocument.uri;
@@ -301,3 +325,4 @@ documents.listen(connection);
 
 // Listen on the connection
 connection.listen();
+

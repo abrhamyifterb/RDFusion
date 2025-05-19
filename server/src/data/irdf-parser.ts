@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Node } from 'jsonc-parser';
-import { Diagnostic, Range } from 'vscode-languageserver/node';
+import { Diagnostic, Range } from 'vscode-languageserver/node.js';
 
 export interface CachedParsedGraph {
   version: number;

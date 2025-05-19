@@ -1,15 +1,31 @@
-.vscode/**
-**/*.ts
-**/*.map
-.gitignore
-**/tsconfig.json
-**/tsconfig.base.json
-contributing.md
-.travis.yml
-client/node_modules/**
-!client/node_modules/vscode-jsonrpc/**
-!client/node_modules/vscode-languageclient/**
-!client/node_modules/vscode-languageserver-protocol/**
-!client/node_modules/vscode-languageserver-types/**
-!client/node_modules/{minimatch,brace-expansion,concat-map,balanced-match}/**
-!client/node_modules/{semver,lru-cache,yallist}/**
+# 1) Ignore everything by default
+**
+
+# 2) But keep these top-level files/folders:
+!package.json
+!README.md
+!LICENSE
+!syntaxes/
+!resources/
+!out/
+
+# 3) Within out/, keep only your JS bundles:
+out/**
+
+# 4) Exclude maps and TS source:
+out/**/*.map
+client/
+server/
+src/
+.vscode/
+.git/
+*.log
+
+
+!out/extension.js
+!out/server.js
+!out/rdfusion.vsix
+!server/out/**
+!client/out/**
+node_modules/*
+!node_modules/jsonc-parser/lib/esm/impl/**

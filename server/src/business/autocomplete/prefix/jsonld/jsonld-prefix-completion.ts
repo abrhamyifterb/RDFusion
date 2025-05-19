@@ -29,7 +29,7 @@ export class JsonLdPrefixCompletionProvider {
 	): Promise<CompletionItem[]> {
 		const uri    = params.textDocument.uri;
 		const doc    = documents.get(uri);
-		if (!doc) return [];
+		if (!doc) {return [];}
 	
 		const text   = doc.getText();
 		const offset = doc.offsetAt(params.position);
@@ -103,7 +103,7 @@ export class JsonLdPrefixCompletionProvider {
 				item.documentation    = `Add \`"${prefix}"\` → \`${iri}\` to @context`;
 				suggestions.push(item);
 
-				if (suggestions.length >= 20) break;
+				if (suggestions.length >= 20) {break;}
 			}
 			return suggestions;
 		}
@@ -111,7 +111,7 @@ export class JsonLdPrefixCompletionProvider {
 		if (usageMatch) {
 			const [, prefix, local] = usageMatch;
 			for (const { prefix: pfx, iri } of all) {
-			if (!pfx.startsWith(prefix)) continue;
+			if (!pfx.startsWith(prefix)) {continue;}
 	
 			const item = CompletionItem.create(`"${pfx}:${local ?? ""}"`);
 			item.kind             = CompletionItemKind.Module;
@@ -128,7 +128,7 @@ export class JsonLdPrefixCompletionProvider {
 			}
 	
 			suggestions.push(item);
-			if (suggestions.length >= 20) break;
+			if (suggestions.length >= 20) {break;}
 			}
 		}
 
@@ -147,7 +147,7 @@ export class JsonLdPrefixCompletionProvider {
 			disallowComments:   false
 		});
 		const ctxNode = root && this.findContextNode(root, text);
-		if (!ctxNode) return;
+		if (!ctxNode) {return;}
 	
 		const bracePos = ctxNode.offset;
 		const insertPos = doc.positionAt(bracePos + 1);

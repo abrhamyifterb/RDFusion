@@ -27,8 +27,3 @@ declare module '@rdfjs/dataset' {
     const dataset: any;
     export default dataset;
 }
-
-declare module '@zazuko/env-node' {
-    const rdf: any;
-    export default rdf;
-}
