@@ -5,7 +5,7 @@ RDFusion brings RDF editing and validation directly into VS Code. Whether you’
 - Highlights **inline syntax errors** as you type  
 - Runs and highlights **SHACL shape validation** against your data model as you type 
 - **Suggests vocabulary terms** (e.g. `foaf:`, `schema:`, `rdf:`) from both local files and remote registries  
-- Lets you **group triples by subject** into compact blocks for readability  
+- Lets you **group triples by subject** into compact blocks for readability as well as **filter triples** based on user input specification
 
 ## Features & Commands
 
@@ -22,7 +22,7 @@ As you type prefix names, RDFusion suggests terms from:
 - **Remote registries** (LOV API, Direct Dereference)  
 - RUN **“RDFusion: Toggle Autocomplete”** to switch term completion between local, remote, or both sources. Also to enable/disable declaration of undeclared prefix.
 
-### Triiple Management  
+### Triple Management  
 - RUN **“RDFusion: Group by Subject”** to transform flat Turtle into grouped blocks.
 - RUN **“RDFusion: Filter Triples”** to filter triples based on user specified subject, predicate, and object; supporting both full IRIs and prefixed names, as well as literal values. Filtered triples are shown in new untitled VS Code editor tab. 
 
