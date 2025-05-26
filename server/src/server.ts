@@ -38,6 +38,8 @@ import { ShaclRegistry } from './business/autocomplete/shacl-based/shacl-registr
 import { RDFusionConfigSettings } from './utils/irdfusion-config-settings.js';
 import { GroupBySubjectCommand } from './business/triple-management/grouping/group-by-subject-command.js';
 import { FilterTriplesCommand } from './business/triple-management/filtering/filter-triples-command.js';
+import { VoIDGenerateCommand } from './business/triple-management/void-generate/void-generate-command.js';
+import { MergeGroupCommand, MergeParams } from './business/triple-management/merge-files/merge-and-group-command.js';
 // import { ShaclCompletionProvider } from './business/autocomplete/shacl-based/shacl-completion-provider.js';
 // import { DocumentCache } from './business/autocomplete/shacl-based/document-cache.js';
 
@@ -84,7 +86,9 @@ const groupCommand   = new GroupBySubjectCommand(
 
 const filterCommand = new FilterTriplesCommand(dataManager, connection);
 
+const voidGenerator = new VoIDGenerateCommand(dataManager, connection);
 
+const mergeGroupCommand = new MergeGroupCommand(dataManager, connection);
 
 const ttlTermProvider    = new TtlTermCompletionProvider(termProvider, connection, serverConfigSettings);
 const jsonldTermProvider = new JsonLdTermCompletionProvider(termProvider, prefixRegistry, connection, serverConfigSettings);
@@ -118,7 +122,7 @@ connection.onInitialize((params: InitializeParams) => {
 			textDocumentSync: TextDocumentSyncKind.Incremental,
 			completionProvider: {
 				resolveProvider: false,
-				triggerCharacters: [':', '"', '@', ' ']
+				triggerCharacters: [':', '"', '@']
 			},
 			diagnosticProvider: {
 				documentSelector: [
@@ -132,7 +136,9 @@ connection.onInitialize((params: InitializeParams) => {
 			executeCommandProvider: {
 				commands: [
 					'rdf.groupBySubject',
-					'rdf.filterTriples'
+					'rdf.filterTriples',
+					'rdf.generateVoID',
+					'rdf.mergeFiles'
 				]
 			},
 		}
@@ -204,7 +210,7 @@ connection.onNotification('workspace/parsedRdf', async (params: { uri: string; t
 		shapeManager.updateShapeIndex(params.uri, parsedGraph);
 		shaclRegistry.update(shapeManager.getGlobalShapes());
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const diagnostics: Diagnostic[] = await validationManager.validate(params.uri);
+		// const diagnostics: Diagnostic[] = await validationManager.validate(params.uri);
 		// connection.sendDiagnostics({ uri: params.uri, diagnostics });
 		// console.log(`[Server] Processed workspace file ${params.uri}`);
 	} catch (error: any) {
@@ -221,9 +227,9 @@ documents.onDidOpen((event) => {
     .then((parsedGraph: any) => {
 		shapeManager.updateShapeIndex(event.document.uri, parsedGraph);
 		//docCache.update(event.document.uri, event.document.getText(), parsedGraph);
-		validationManager.validate(event.document.uri).then((_diagnostics: any) => {
-			// connection.sendDiagnostics({ uri: event.document.uri, diagnostics });
-		});
+		// validationManager.validate(event.document.uri).then((_diagnostics: any) => {
+		// 	// connection.sendDiagnostics({ uri: event.document.uri, diagnostics });
+		// });
     })
     .catch((err: { message: any; }) => connection.console.error(`Error parsing ${event.document.uri}: ${err.message}`));
 });
@@ -233,9 +239,9 @@ documents.onDidChangeContent((change) => {
 		.then((parsedGraph: any) => {
 			shapeManager.updateShapeIndex(change.document.uri, parsedGraph);
 			//docCache.update(change.document.uri, change.document.getText(), parsedGraph);
-			validationManager.validate(change.document.uri).then((_diagnostics: any) => {
-			// connection.sendDiagnostics({ uri: change.document.uri, diagnostics });
-		});
+		// 	validationManager.validate(change.document.uri).then((_diagnostics: any) => {
+		// 	// connection.sendDiagnostics({ uri: change.document.uri, diagnostics });
+		// });
     })
     .catch((err: { message: unknown; }) => connection.console.error(`Error updating ${change.document.uri}: ${err.message}`));
 });
@@ -288,6 +294,14 @@ connection.onExecuteCommand(async (params) => {
 			predicateFilters: string[];
 			objectFilters:    string[];
 		});
+	}
+	else if (params.command === 'rdf.generateVoID' && params.arguments) {
+		const generatedVoID = await voidGenerator.execute(params.arguments[0] as { uri: string });
+		return generatedVoID;
+	}
+	else if (params.command === 'rdf.mergeFiles' && params.arguments) {
+		const args = params.arguments[0] as MergeParams;
+		return mergeGroupCommand.execute(args);
 	}
 });
 

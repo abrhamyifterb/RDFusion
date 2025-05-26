@@ -7,6 +7,7 @@ interface LiteralFilter {
 
 export class FilterQuads {
 	private static normalize(s: string): string {
+		// eslint-disable-next-line no-useless-escape
 		return s.replace(/^['\"]|['\"]$/g, '').toLowerCase();
 	}
 
@@ -23,6 +24,7 @@ export class FilterQuads {
 	}
 	
 	private static parseLiteralFilter(raw: string, prefixes: Record<string, string>): LiteralFilter {
+		// eslint-disable-next-line no-useless-escape
 		const text = raw.trim().replace(/^['\"]|['\"]$/g, '');
 		const parts = text.split('^^');
 		if (parts.length === 2) {
@@ -49,7 +51,7 @@ export class FilterQuads {
 	private static matchesLiteral(
 		q: Quad,
 		filters: LiteralFilter[],
-		prefixes: Record<string, string>
+		_prefixes: Record<string, string>
 	): boolean {
 		if (filters.length === 0) return true;
 		if (q.object.termType !== 'Literal') return false;

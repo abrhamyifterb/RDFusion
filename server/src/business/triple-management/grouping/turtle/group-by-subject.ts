@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Term } from 'n3';
-import { ParsedGraph } from '../../../../data/irdf-parser';
+import { JsonldParsedGraph, ParsedGraph } from '../../../../data/irdf-parser';
 import { SubjectIndex } from './subject-index.js';
 
 const RDF = {
@@ -13,8 +13,19 @@ const RDF = {
 export class GroupFormatter {
   private subjIndex = new SubjectIndex();
 
-  public group(graph: ParsedGraph): string {
-    const { quads, prefixes = {} } = graph;
+  public group(graph: ParsedGraph | JsonldParsedGraph): string {
+    const quads = graph.quads;
+
+    const prefixes: Record<string,string> = {};
+    if ('prefixes' in graph && graph.prefixes) {
+      Object.assign(prefixes, graph.prefixes);
+    }
+    if ('contextMap' in graph && graph.contextMap) {
+      for (const [key, uri] of graph.contextMap.entries()) {
+        prefixes[key] = uri;
+      }
+    }
+
     const out: string[] = [];
 
     Object.entries(prefixes)
@@ -75,11 +86,19 @@ export class GroupFormatter {
       inlineLists.has(q.subject.value) ||
       propListIds.has(q.subject.value)
     );
+    
     this.subjIndex.applyDelta({ removed: toRemove, added: [] });
 
     const abbr = (uri: string) => {
       for (const [p,b] of Object.entries(prefixes)) {
-        if (uri.startsWith(b)) return `${p}:${uri.slice(b.length)}`;
+        if (uri.startsWith(b)) {
+          const local = uri.slice(b.length);
+          // eslint-disable-next-line no-useless-escape
+          if(/^[A-Za-z_][A-Za-z0-9._\-]*$/.test(local))
+          {
+            return `${p}:${local}`;
+          }
+        }
       }
       return `<${uri}>`;
     };
@@ -115,9 +134,13 @@ export class GroupFormatter {
       }
 
       let lit = `"${t.value}"`;
-      if ((t as any).language) lit += `@${(t as any).language}`;
+      if ((t as any).language) {
+        lit += `@${(t as any).language}`;
+      }
       else if ((t as any).datatype.value !== `${prefixes['xsd']}string`)
-        lit += `^^${abbr((t as any).datatype.value)}`;
+        {
+          lit += `^^${abbr((t as any).datatype.value)}`;
+        }
       return lit;
     };
 
@@ -182,6 +205,4 @@ export class GroupFormatter {
 
     return out.join('\n').trim() + '\n';
   }
-
-  
 }

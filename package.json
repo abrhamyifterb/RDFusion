@@ -9,7 +9,10 @@
 		"url": "https://github.com/abrhamyifterb/RDFusion"
 	},
 	"publisher": "RDFusion",
-	"workspaces": ["client", "server"],
+	"workspaces": [
+		"client",
+		"server"
+	],
 	"icon": "resources/logo.png",
 	"categories": [],
 	"keywords": [
@@ -102,6 +105,28 @@
 				"command": "rdfusion.filterTriples",
 				"title": "RDFusion: Filter Triples",
 				"enablement": "editorLangId == turtle"
+			},
+			{
+				"command": "rdfusion.toggleIriShorten",
+				"title": "RDFusion: Toggle IRI Shortening",
+				"enablement": "editorLangId == turtle"
+			},
+			{
+				"command": "rdfusion.setIriMaxLength",
+				"title": "RDFusion: Set IRI Shorten Length"
+			},
+			{
+				"command": "rdfusion.toggleOneIri",
+				"title": "RDFusion: Toggle One IRI",
+				"when": "false"
+			},
+			{
+				"command": "rdfusion.generateVoID",
+				"title": "RDFusion: Generate VoID"
+			},
+			{
+				"command": "rdfusion.mergeFiles",
+				"title": "RDFusion: Merge Files"
 			}
 		],
 		"configuration": {
@@ -218,7 +243,7 @@
 				},
 				"rdfusion.jsonld.autocomplete": {
 					"type": "object",
-					"description": "Enable or disable each validation rule for turtle (TTL)",
+					"description": "Enable or disable each validation rule for JSONLD",
 					"default": {
 						"localBased": true,
 						"remoteBased": true,
@@ -241,6 +266,17 @@
 							"description": "Enable naming validation"
 						}
 					}
+				},
+				"rdfusion.turtle.irishorten.enabled": {
+					"type": "boolean",
+					"default": false,
+					"description": "Enable automatic IRI shortening in Turtle."
+				},
+				"rdfusion.turtle.irishorten.maxLength": {
+					"type": "number",
+					"default": 30,
+					"minimum": 7,
+					"description": "Maximum IRI length before collapsing."
 				}
 			}
 		}
@@ -261,6 +297,7 @@
 		"@stylistic/eslint-plugin": "^2.9.0",
 		"@types/mocha": "^10.0.6",
 		"@types/node": "^20",
+		"@types/rdf-ext": "^2.5.2",
 		"electron-rebuild": "^3.2.9",
 		"esbuild": "^0.25.4",
 		"eslint": "^9.13.0",
@@ -269,23 +306,25 @@
 		"typescript-eslint": "^8.26.0"
 	},
 	"dependencies": {
-		"@comunica/types": "^4.2.0",
-		"@types/node-fetch": "^2.6.12",
-		"lru-cache": "^11.1.0",
 		"@comunica/query-sparql": "^4.0.2",
+		"@comunica/types": "^4.2.0",
 		"@rdfjs/data-model": "^2.1.0",
 		"@rdfjs/dataset": "^2.0.2",
+		"@rdfjs/parser-n3": "^2.1.0",
 		"@rdfjs/types": "^2.0.1",
+		"@types/node-fetch": "^2.6.12",
 		"@zazuko/env-node": "^3.0.0",
 		"bcp-47": "^2.1.0",
+		"glob": "^11.0.0",
 		"jsonc-parser": "^3.2.1",
 		"jsonld": "^8.3.3",
+		"lru-cache": "^11.1.0",
 		"millan": "^5.4.0",
 		"n3": "^1.24.2",
 		"node-fetch": "^3.3.2",
 		"rdf-dereference": "^4.0.0",
+		"rdf-ext": "^2.5.2",
 		"shacl-engine": "^1.0.2",
-		"glob": "^11.0.0",
 		"vscode-languageclient": "^9.0.1",
 		"vscode-languageserver": "^9.0.1",
 		"vscode-languageserver-textdocument": "^1.0.11"

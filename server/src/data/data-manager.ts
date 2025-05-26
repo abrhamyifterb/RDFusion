@@ -52,7 +52,7 @@ export class DataManager {
 	getAllParsedData(): Map<string, CachedParsedGraph> {
 		return this.parsedData;
 	}
-	
+
 	getParsedData(uri: string): ParsedGraph | JsonldParsedGraph | undefined {
 		const cached = this.parsedData.get(uri);
 		return cached ? cached.parsedGraph : undefined;

@@ -17,26 +17,32 @@ export class GroupBySubjectCommand {
   ) {}
 
   public async execute(args: { uri: string }): Promise<void> {
-    const uri    = args.uri;
-    const parsed = this.dataManager.getParsedData(uri) as ParsedGraph | undefined;
-    if (!parsed) {
-      this.connection.console.error(`[Group] No parsed data for ${uri}`);
+    try {
+      const uri    = args.uri;
+      const parsed = this.dataManager.getParsedData(uri) as ParsedGraph | undefined;
+      if (!parsed) {
+        this.connection.console.error(`[Group] No parsed data for ${uri}`);
+        return;
+      }
+
+      const groupFormatter = new GroupFormatter();
+    
+      const groupedText = groupFormatter.group(parsed);
+
+      const doc = this.documents.get(uri);
+      if (!doc) return;
+      const fullRange: Range = {
+        start: Position.create(0, 0),
+        end:   Position.create(doc.lineCount - 1, doc.getText().split('\n').pop()!.length)
+      };
+
+      await this.connection.workspace.applyEdit({
+        changes: { [uri]: [ TextEdit.replace(fullRange, groupedText) ] }
+      });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      console.error("Grouping Triples errors: " + error);
       return;
     }
-
-	  const groupFormatter = new GroupFormatter();
-  
-    const groupedText = groupFormatter.group(parsed);
-
-    const doc = this.documents.get(uri);
-    if (!doc) return;
-    const fullRange: Range = {
-      start: Position.create(0, 0),
-      end:   Position.create(doc.lineCount - 1, doc.getText().split('\n').pop()!.length)
-    };
-
-    await this.connection.workspace.applyEdit({
-      changes: { [uri]: [ TextEdit.replace(fullRange, groupedText) ] }
-    });
   }
 }

@@ -1,11 +1,16 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { JsonldParsedGraph, ParsedGraph } from '../irdf-parser';
 import { IShapeExtractor, ShaclShape } from './ishape-extractor';
 
-const RDF_TYPE        = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
-const SHACL_SHAPE     = 'http://www.w3.org/ns/shacl#Shape';
+const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
+const SHACL_SHAPE = 'http://www.w3.org/ns/shacl#Shape';
 const SHACL_NAMESPACE = 'http://www.w3.org/ns/shacl#';
-const SHACL_TARGET    = SHACL_NAMESPACE + 'targetClass';
-const SHACL_PROPERTY  = SHACL_NAMESPACE + 'property';
+const SHACL_TARGET = SHACL_NAMESPACE + 'targetClass';
+const SHACL_PROPERTY = SHACL_NAMESPACE + 'property';
+const SHACL_IN = SHACL_NAMESPACE + 'in';
+const RDF_FIRST = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#first';
+const RDF_REST = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#rest';
+const RDF_NIL = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#nil';
 
 export class ShaclShapeExtractor implements IShapeExtractor {
 	extractShapes(parsedGraph: ParsedGraph | JsonldParsedGraph): ShaclShape[] {
@@ -45,9 +50,31 @@ export class ShaclShapeExtractor implements IShapeExtractor {
 				}
 			}
 
+
+			const listQuads: any[] = [];
+			const visited = new Set<string>();
+
+			function traverseList(node: string) {
+				if(!node || visited.has(node) || node === RDF_NIL) {return;}
+				visited.add(node);
+				const quads = bySubject.get(node) || [];
+				for (const quad of quads) {
+					if (quad.predicate.value === RDF_FIRST || quad.predicate.value === RDF_REST) {
+						listQuads.push(quad);
+						traverseList(quad.object.value);
+					}
+				}
+			}
+
+			for (const quad of shapeQuads){
+				if(quad.predicate.value === SHACL_IN) {
+					listQuads.push(quad);
+					traverseList(quad.object.value);
+				}
+			}
+			shapeQuads.push(...listQuads);
 			shapes.push({ subject: subj, quads: shapeQuads });
 		}
-
 		return shapes;
 	}
 }

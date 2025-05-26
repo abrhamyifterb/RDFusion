@@ -1,11 +1,11 @@
 // subjectIndex.ts
 import { Quad } from 'n3';
-import { ParsedGraph } from '../../../../data/irdf-parser';
+import { JsonldParsedGraph, ParsedGraph } from '../../../../data/irdf-parser';
 
 export class SubjectIndex {
 	private index = new Map<string, Quad[]>();
 
-	public getBySubject(iri: string, graph: ParsedGraph): Quad[] {
+	public getBySubject(iri: string, graph: ParsedGraph | JsonldParsedGraph): Quad[] {
 		let bucket = this.index.get(iri);
 		if (!bucket) {
 			bucket = graph.quads.filter(q => q.subject.value === iri);

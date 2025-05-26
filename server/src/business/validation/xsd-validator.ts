@@ -15,10 +15,10 @@ export function validateXsdDouble(literal: string): boolean {
 }
 
 export function validateXsdDate(literal: string): boolean {
-    return /^\d{4}-\d{2}-\d{2}$/.test(literal);
+    return /^"\d{4}-\d{2}-\d{2}"$/.test(literal);
 }
 
 export function validateXsdBoolean(literal: string): boolean {
-    return /^(true|false|1|0)$/.test(literal);
+    return /^"(true|false|1|0)"$/.test(literal);
 }
 

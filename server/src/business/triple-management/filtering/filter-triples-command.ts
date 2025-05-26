@@ -1,6 +1,6 @@
-import { Connection, TextDocuments } from 'vscode-languageserver';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Connection } from 'vscode-languageserver';
 import { DataManager } from '../../../data/data-manager';
-import { TextDocument } from 'vscode-languageserver-textdocument';
 import { ParsedGraph } from '../../../data/irdf-parser';
 import { FilterQuads } from './turtle/filter-triples';
 import { GroupFormatter } from '../grouping/turtle/group-by-subject';
@@ -46,8 +46,8 @@ export class FilterTriplesCommand {
 			const groupedTurtle = new GroupFormatter().group(fragment);
 			
 			return groupedTurtle;
-		} catch (e:any)	{
-			console.error("FilterTriples errors: " + e);
+		} catch (error:any)	{
+			console.error("FilterTriples errors: " + error);
 			return '';
 		}
 	}
