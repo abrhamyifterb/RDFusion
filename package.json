@@ -113,7 +113,8 @@
 			},
 			{
 				"command": "rdfusion.setIriMaxLength",
-				"title": "RDFusion: Set IRI Shorten Length"
+				"title": "RDFusion: Set IRI Shorten Length",
+				"enablement": "editorLangId == turtle"
 			},
 			{
 				"command": "rdfusion.toggleOneIri",
