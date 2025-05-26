@@ -25,4 +25,7 @@ As you type prefix names, RDFusion suggests terms from:
 ### Triple Management  
 - RUN **“RDFusion: Group by Subject”** to transform flat Turtle into grouped blocks.
 - RUN **“RDFusion: Filter Triples”** to filter triples based on user specified subject, predicate, and object; supporting both full IRIs and prefixed names, as well as literal values. Filtered triples are shown in new untitled VS Code editor tab. 
-
+- RUN **“RDFusion: Generate VoID”** to generate a Vocabulary of Interlinked Datasets. It will generate void:triples, void:distinctSubjects, void:distinctObjects, void:properties, void:propertyPartition, void:classPartition, and void:vocabulary for your current open ttl or jsonld file.
+- RUN **“RDFusion: Toggle IRI Shortening”** to enable/disable IRI shortening and expansion in Turtle. Once enabled you can shorten and expand each IRI inside the editor.
+- RUN **“RDFusion: Set IRI Shorten Length”** to set the maximum length before applying IRI shortening in Turtle.
+- RUN **“RDFusion: Merge Files”** to merge the current open ttl/jsonld file with another ttl or jsonld file. The merged data is grouped and shown in new untitled VS Code editor tab.

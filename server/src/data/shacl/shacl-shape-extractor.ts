@@ -50,7 +50,6 @@ export class ShaclShapeExtractor implements IShapeExtractor {
 				}
 			}
 
-
 			const listQuads: any[] = [];
 			const visited = new Set<string>();
 
