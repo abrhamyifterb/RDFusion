@@ -14,7 +14,7 @@ export class ValidationManager {
 	private configSettings: RDFusionConfigSettings;
 
 	constructor(
-		private dataManager: DataManager, 
+		private dataManager: DataManager,
 		private shapeManager: ShapeManager,
 		private documents: TextDocuments<TextDocument>,
 		initialSettings: RDFusionConfigSettings

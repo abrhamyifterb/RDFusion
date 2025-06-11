@@ -82,11 +82,17 @@ export class GroupFormatter {
         .filter(id => quads.some(q2 => q2.subject.value===id))
     );
 
-    const toRemove = quads.filter(q =>
-      inlineLists.has(q.subject.value) ||
-      propListIds.has(q.subject.value)
+    const listHeads = new Set(
+      quads.filter(q => q.predicate.value === RDF.first)
+        .map(q => q.subject.value)
     );
     
+    const toRemove = quads.filter(q =>
+      listHeads.has(q.subject.value) &&
+      (q.predicate.value === RDF.first ||
+        q.predicate.value === RDF.rest)
+    );
+
     this.subjIndex.applyDelta({ removed: toRemove, added: [] });
 
     const abbr = (uri: string) => {
@@ -104,7 +110,7 @@ export class GroupFormatter {
     };
 
     const render = (t: Term): string => {
-      if (t.termType==='NamedNode') return abbr(t.value);
+      if (t.termType==='NamedNode') {return abbr(t.value);}
 
       if (t.termType==='BlankNode') {
         const id = t.value;
@@ -134,45 +140,31 @@ export class GroupFormatter {
       }
 
       let lit = `"${t.value}"`;
-      if ((t as any).language) {
+      const litLang = (t as any).language;
+      const litDatatype = (t as any).datatype.value;
+
+      if (litLang) {
         lit += `@${(t as any).language}`;
+        return lit;
       }
-      else if ((t as any).datatype.value !== `${prefixes['xsd']}string`)
-        {
-          lit += `^^${abbr((t as any).datatype.value)}`;
-        }
-      return lit;
+
+      if (litDatatype === `${prefixes['xsd']}string` || litDatatype === '') {
+        return lit;
+      }
+
+      return `${lit}^^${abbr(litDatatype)}`;
     };
-
-    for (const id of Array.from(specialListSubjects).sort()) {
-      const items    = fullListMap.get(id)!;
-      const subjText = `( ${items.map(render).join(' ')} )`;
-
-      const others = quads.filter(q =>
-        q.subject.value===id &&
-        q.predicate.value!==RDF.first &&
-        q.predicate.value!==RDF.rest
-      );
-      for (const q of others) {
-        const pred = q.predicate.value===RDF.type
-          ? 'a'
-          : abbr(q.predicate.value);
-        out.push(`${subjText} ${pred} ${render(q.object as Term)} .`);
-      }
-      out.push('');
-    }
 
     const subjects = Array.from(new Set(quads.map(q=>q.subject.value)))
       .filter(id =>
         !inlineLists.has(id) &&
-        !propListIds.has(id) &&
+        !propListIds.has(id)  &&
         !specialListSubjects.has(id)
-      )
-      .sort();
+      );
 
     for (const id of subjects) {
       const triples = this.subjIndex.getBySubject(id, graph);
-      if (!triples.length) continue;
+      if (!triples.length) {continue;}
 
       const subjText = render(triples[0].subject);
       let block = `${subjText} `;
@@ -190,17 +182,35 @@ export class GroupFormatter {
         const seen = new Set<string>();
         const unique = objs.filter(o => {
           const rep = render(o);
-          if (seen.has(rep)) return false;
+          if (seen.has(rep)) {return false;}
           seen.add(rep);
           return true;
         });
 
         const txts = unique.map(render).join(', ');
         const sep  = i===entries.length-1 ? '.' : ';';
-        block += `${pred} ${txts} ${sep}\n    `;
+        block += `${pred} ${txts} ${sep}\n  `;
       });
 
       out.push(block.trim(), '');
+    }
+
+    for (const id of Array.from(specialListSubjects)) {
+      const items    = fullListMap.get(id)!;
+      const subjText = `( ${items.map(render).join(' ')} )`;
+
+      const others = quads.filter(q =>
+        q.subject.value===id &&
+        q.predicate.value!==RDF.first &&
+        q.predicate.value!==RDF.rest
+      );
+      for (const q of others) {
+        const pred = q.predicate.value===RDF.type
+          ? 'a'
+          : abbr(q.predicate.value);
+        out.push(`${subjText} ${pred} ${render(q.object as Term)} .`);
+      }
+      out.push('');
     }
 
     return out.join('\n').trim() + '\n';

@@ -242,6 +242,10 @@ export class TurtleCstToQuadsVisitor {
   }
 
   private visitBlankNode(node: any): any {
+    if (node.children.ANON) {
+      return blankNode(this.newBlankNodeLabel());
+    }
+    
     const token = node.children.BLANK_NODE_LABEL?.[0] || node.children.ANON?.[0];
     const label = token.image.startsWith('_:') ? token.image.slice(2) : token.image;
     return blankNode(label);
@@ -331,8 +335,14 @@ export class TurtleCstToQuadsVisitor {
   }
   
   private visitBlankNodePropertyList(bnpl: any): any {
+    const predicateObjectLists = bnpl.children.predicateObjectList;
     const node = blankNode(this.newBlankNodeLabel());
-    bnpl.children.predicateObjectList?.forEach((po: any) => {
+
+    if (!predicateObjectLists || predicateObjectLists.length === 0) {
+      return node;
+    }
+
+    predicateObjectLists.forEach((po: any) => {
       const pairs = this.visitPredicateObjectList(po);
       const pos = this.extractPosition(po.children.objectList[0]);
       pairs.forEach(pair => {

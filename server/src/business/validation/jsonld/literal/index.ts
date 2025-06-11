@@ -1,5 +1,6 @@
 
 import { ValidationRule } from '../../utils.js';
+import DuplicateCheck from './rules/duplicate-finder.js';
 import EmptyLiteral from './rules/empty-literal.js';
 import JsonLiteral from './rules/json-literal.js';
 import LanguageTag from './rules/language-tag.js';
@@ -13,5 +14,6 @@ export const literalRules: ValidationRule[] = [
 	new MissingTypeOrLang(),
 	new LanguageTag(),
 	new XsdDatatype(),
-	new JsonLiteral()
+	new JsonLiteral(),
+	new DuplicateCheck()
 ];

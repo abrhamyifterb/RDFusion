@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Connection } from 'vscode-languageserver';
 import { DataManager } from '../../../data/data-manager';
-import { ParsedGraph } from '../../../data/irdf-parser';
+import { JsonldParsedGraph, ParsedGraph } from '../../../data/irdf-parser';
 import { FilterQuads } from './turtle/filter-triples';
-import { GroupFormatter } from '../grouping/turtle/group-by-subject';
-import { Quad } from 'n3';
+import { TurtleFilterCommand } from './turtle/turtle-filter-command';
+import { JsonldFilterCommand } from './jsonld/jsonld-filter-command';
 
 export class FilterTriplesCommand {
 	constructor(
@@ -14,16 +14,49 @@ export class FilterTriplesCommand {
 
 	public async execute(args: {
 		uri: string;
-		subjectFilters:   string[];
-		predicateFilters: string[];
-		objectFilters:    string[];
+		subjectFilters?:   string[];
+		predicateFilters?: string[];
+		objectFilters?:    string[];
 	}): Promise<string> {
 		try {
-			const { uri, subjectFilters, predicateFilters, objectFilters } = args;
-			const parsed = this.dataManager.getParsedData(uri) as ParsedGraph | undefined;
+
+			const { 
+				uri, 
+				subjectFilters = [], 
+				predicateFilters = [], 
+				objectFilters = [] 
+			} = args;
+
+			const typeofuri = uri.toLowerCase().endsWith(".ttl") ? "turtle" : uri.toLowerCase().endsWith(".jsonld") ? "jsonld" : "unknown";
+			if (typeofuri === "unknown") {
+				return "";
+			}
+
+			const parsed = this.dataManager.getParsedData(uri) as ParsedGraph | JsonldParsedGraph | undefined;
+			
 			if (!parsed) {
 				this.connection.console.error(`[Filter] No parsed data for ${uri}`);
 				return '';
+			}
+
+			if (('errors' in parsed && parsed.errors?.length) || ('diagnostics' in parsed && parsed.diagnostics.length)) {
+				this.connection.console.error(`[Filter] Error during parsing data for ${uri}`);
+				return '';
+			}
+
+			const mergedPrefixes: Record<string, string> = {};
+			if ('prefixes' in parsed && parsed.prefixes) {
+				Object.assign(mergedPrefixes, parsed.prefixes);
+			}
+			if ('contextMap' in parsed && parsed.contextMap) {
+				Object.assign(mergedPrefixes, Object.fromEntries(parsed.contextMap.entries()));
+			}
+			
+	
+			for (const [pfx, ns] of Object.entries(mergedPrefixes)) {
+				if (!ns.endsWith('/') && !ns.endsWith('#')) {
+					mergedPrefixes[pfx] = ns + '/';
+				}
 			}
 
 			const filteredQuads = FilterQuads.apply(
@@ -31,56 +64,23 @@ export class FilterTriplesCommand {
 				subjectFilters,
 				predicateFilters,
 				objectFilters,
-				parsed.prefixes || {}
+				mergedPrefixes || {}
 			);
-			if (filteredQuads.length === 0) return '';
+			if (filteredQuads.length === 0) {
+				return '';
+			}
 			
-			const filteredPrefixes = usedPrefixes(filteredQuads, parsed.prefixes);
 
-			const fragment: ParsedGraph = {
-				quads: filteredQuads || [],
-				prefixes: filteredPrefixes,
-				tokens: []
-			};
-
-			const groupedTurtle = new GroupFormatter().group(fragment);
+			if (typeofuri === 'turtle') {
+				return new TurtleFilterCommand().filter(filteredQuads, mergedPrefixes);
+			} else {
+				return await new JsonldFilterCommand().format(filteredQuads);
+			}
 			
-			return groupedTurtle;
 		} catch (error:any)	{
-			console.error("FilterTriples errors: " + error);
+			this.connection.console.error(`[Filter] Failed to process:  ${error.message || error.toString()}`);
+			console.error(`[Filter] Failed to process:  ${error.message || error.toString()}`);
 			return '';
 		}
 	}
-}
-
-
-function usedPrefixes(
-	quads: Quad[],
-	prefixes: Record<string,string> = {}
-): Record<string,string> {
-	const used = new Set<string>();
-	for (const q of quads) {
-		const record = (iri: string) => {
-			for (const [pfx, base] of Object.entries(prefixes)) {
-				if (iri.startsWith(base)) {
-					used.add(pfx);
-				}
-			}
-		};
-
-		record(q.subject.value);
-		record(q.predicate.value);
-		
-		if (q.object.termType === 'NamedNode') {
-			record(q.object.value);
-		} else if (q.object.termType === 'Literal') {
-			const dt = (q.object as any).datatype?.value;
-			if (dt) record(dt);
-		}
-	}
-	const usedPrefixes: Record<string,string> = {};
-	for (const pfx of used) {
-		usedPrefixes[pfx] = prefixes[pfx];
-	}
-	return usedPrefixes;
 }

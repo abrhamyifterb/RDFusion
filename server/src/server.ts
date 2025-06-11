@@ -40,6 +40,9 @@ import { GroupBySubjectCommand } from './business/triple-management/grouping/gro
 import { FilterTriplesCommand } from './business/triple-management/filtering/filter-triples-command.js';
 import { VoIDGenerateCommand } from './business/triple-management/void-generate/void-generate-command.js';
 import { MergeGroupCommand, MergeParams } from './business/triple-management/merge-files/merge-and-group-command.js';
+import { SortTriplesCommand } from './business/triple-management/sorting/sorting-triples-command.js';
+import { TurtleFormatterCommand } from './business/triple-management/formatting/turtle/turtle-formatter-command.js';
+import { JsonldFrameCommand } from './business/triple-management/formatting/jsonld/jsonld-frame-command.js';
 // import { ShaclCompletionProvider } from './business/autocomplete/shacl-based/shacl-completion-provider.js';
 // import { DocumentCache } from './business/autocomplete/shacl-based/document-cache.js';
 
@@ -55,8 +58,9 @@ let hasWorkspaceFolderCapability = false;
 
 
 let serverConfigSettings: RDFusionConfigSettings = {
-	turtle: { validations: {}, autocomplete: {} },
-	jsonld: { validations: {}, autocomplete: {} }
+	turtle: { validations: {}, autocomplete: {}, formatting: {} },
+	jsonld: { validations: {}, autocomplete: {} },
+	common: { validations: {} }
 };
 
 
@@ -84,6 +88,10 @@ const groupCommand   = new GroupBySubjectCommand(
 	dataManager, connection, documents
 );
 
+const sortCommand   = new SortTriplesCommand(
+	dataManager, connection, documents
+);
+
 const filterCommand = new FilterTriplesCommand(dataManager, connection);
 
 const voidGenerator = new VoIDGenerateCommand(dataManager, connection);
@@ -93,6 +101,8 @@ const mergeGroupCommand = new MergeGroupCommand(dataManager, connection);
 const ttlTermProvider    = new TtlTermCompletionProvider(termProvider, connection, serverConfigSettings);
 const jsonldTermProvider = new JsonLdTermCompletionProvider(termProvider, prefixRegistry, connection, serverConfigSettings);
 
+const turtleFormatterCommand = new TurtleFormatterCommand(dataManager, connection, documents, prefixRegistry, serverConfigSettings);
+const jsonldFrameCommand = new JsonldFrameCommand(dataManager, connection, documents);
 
 const initialShapes  = shapeManager.getGlobalShapes();
 const shaclRegistry = new ShaclRegistry(initialShapes);
@@ -137,8 +147,14 @@ connection.onInitialize((params: InitializeParams) => {
 				commands: [
 					'rdf.groupBySubject',
 					'rdf.filterTriples',
+					'rdf.filterTriplesBySubject',
+					'rdf.filterTriplesByPredicate',
+					'rdf.filterTriplesByObject',
+					'rdf.sortTriples',
 					'rdf.generateVoID',
-					'rdf.mergeFiles'
+					'rdf.mergeFiles',
+					'rdf.frameJsonld',
+					'rdf.formatTriples'
 				]
 			},
 		}
@@ -162,6 +178,7 @@ connection.onInitialize((params: InitializeParams) => {
 	validationManager.updateSettings(serverConfigSettings);
 	termProvider.updateSettings(serverConfigSettings);
 	ttlProvider.updateSettings(serverConfigSettings);
+	turtleFormatterCommand.updateSettings(serverConfigSettings);
 
 	return result;
 });
@@ -190,7 +207,7 @@ connection.onDidChangeConfiguration(change => {
 	validationManager.updateSettings(serverConfigSettings);
 	termProvider.updateSettings(serverConfigSettings);
 	ttlProvider.updateSettings(serverConfigSettings);
-
+	turtleFormatterCommand.updateSettings(serverConfigSettings);
 	// documents.all().forEach(doc =>
 	// 	validationManager.validate(doc.uri)
 	// 		.then(diags => connection.sendDiagnostics({ uri: doc.uri, diagnostics: diags }))
@@ -209,7 +226,7 @@ connection.onNotification('workspace/parsedRdf', async (params: { uri: string; t
 		const parsedGraph = await dataManager.parseDocument(params.uri, params.text, params.version);
 		shapeManager.updateShapeIndex(params.uri, parsedGraph);
 		shaclRegistry.update(shapeManager.getGlobalShapes());
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		 
 		// const diagnostics: Diagnostic[] = await validationManager.validate(params.uri);
 		// connection.sendDiagnostics({ uri: params.uri, diagnostics });
 		// console.log(`[Server] Processed workspace file ${params.uri}`);
@@ -295,6 +312,33 @@ connection.onExecuteCommand(async (params) => {
 			objectFilters:    string[];
 		});
 	}
+	else if (params.command === 'rdf.filterTriplesBySubject') {
+		return filterCommand.execute(params?.arguments?.[0] as {
+			uri: string;
+			subjectFilters?:   string[];
+			predicateFilters?: string[];
+			objectFilters?:    string[];
+		});
+	}
+	else if (params.command === 'rdf.filterTriplesByPredicate') {
+		return filterCommand.execute(params?.arguments?.[0] as {
+			uri: string;
+			subjectFilters?:   string[];
+			predicateFilters?: string[];
+			objectFilters?:    string[];
+		});
+	}	
+	else if (params.command === 'rdf.filterTriplesByObject') {
+		return filterCommand.execute(params?.arguments?.[0] as {
+			uri: string;
+			subjectFilters?:   string[];
+			predicateFilters?: string[];
+			objectFilters?:    string[];
+		});
+	}
+	else if (params.command === 'rdf.sortTriples' && params.arguments) {
+		await sortCommand.execute(params.arguments[0] as { uri: string; mode: string; direction: string });
+	}
 	else if (params.command === 'rdf.generateVoID' && params.arguments) {
 		const generatedVoID = await voidGenerator.execute(params.arguments[0] as { uri: string });
 		return generatedVoID;
@@ -302,6 +346,12 @@ connection.onExecuteCommand(async (params) => {
 	else if (params.command === 'rdf.mergeFiles' && params.arguments) {
 		const args = params.arguments[0] as MergeParams;
 		return mergeGroupCommand.execute(args);
+	}
+	else if (params.command === 'rdf.frameJsonld' && params.arguments) {
+		await jsonldFrameCommand.execute(params.arguments[0] as { uri: string, data: string });
+	}
+	else if (params.command === 'rdf.formatTriples' && params.arguments) {
+		await turtleFormatterCommand.format(params.arguments[0] as { uri: string });
 	}
 });
 

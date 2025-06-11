@@ -21,10 +21,11 @@ export default class UndefinedPrefix implements ValidationRule {
 			'@id','@type','@value','@language','@list','@set','@context','@graph'
 		]);
 
+    const absoluteIRI = /^[A-Za-z][A-Za-z0-9+.-]*:\/\//;
 		walkAst(this.ast, node => {
 			if (node?.type === 'property') {
 				const key = nodeText(this.text, node.children![0]).slice(1,-1);
-				if (key.includes(':') && !keywords.has(key)) {
+				if (key.includes(':') && !keywords.has(key) && !absoluteIRI.test(key)) {
 					const prefix = key.split(':',1)[0];
 					if (!this.ctx.has(prefix)) {
 						diags.push(Diagnostic.create(

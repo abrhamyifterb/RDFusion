@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
 	CompletionItem,
 	CompletionItemKind,
@@ -67,8 +68,8 @@ export class JsonLdPrefixCompletionProvider {
 						)
 					);
 					used.add(key);
-				} catch { 
-					/* ignore */ 
+				} catch (err: any) { 
+					console.log(`Something went wrong: ${err.message}`); 
 				}
 			}
 		}
@@ -180,8 +181,8 @@ export class JsonLdPrefixCompletionProvider {
 					n.children[0].offset + n.children[0].length
 				)
 				);
-			} catch { 
-				/* ignore */ 
+			} catch (err: any) { 
+				console.log(`Something went wrong: ${err.message}`); 
 			}
 			if (key === "@context") {
 				return n.children[1];

@@ -102,15 +102,15 @@ export class JsonLdParser {
 		try {
 			nquads = (await jsonld.toRDF(jsonObj, { format:'application/n-quads' })) as string;
 		} catch (error:any) {
-      diagnostics.push(
-        Diagnostic.create(
-          rangeFromOffsets(text, 0, 0),
-          "Invalid JSON-LD syntax",
-          DiagnosticSeverity.Error,
-          error.message,
-          'jsonc-parser'
-        )
-      );
+			diagnostics.push(
+				Diagnostic.create(
+				rangeFromOffsets(text, 0, 0),
+				"Invalid JSON-LD syntax",
+				DiagnosticSeverity.Error,
+				error.message,
+				'jsonc-parser'
+				)
+			);
 			// console.error(error);
 		}
 		const quads = new N3Parser().parse(nquads);

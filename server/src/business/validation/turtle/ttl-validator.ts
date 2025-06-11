@@ -17,15 +17,19 @@ import { ParsedGraph } from '../../../data/irdf-parser';
 import { TtlValidation } from '../../../utils/shared/turtle/ttl-types';
 import { literalRules } from './literal/index.js';
 import { RDFusionConfigSettings } from '../../../utils/irdfusion-config-settings';
+import { DuplicateChecker } from './duplicate-finder';
+import { IriSchemeValidator } from './Iri-scheme-validator';
 
 export class TurtleValidator implements IRdfValidator {
 	private turtleValidationConfig;
+	private commonValidationConfig;
 	constructor(
 		private dataManager: DataManager, 
 		private documents: TextDocuments<TextDocument>,
 		configSettings: RDFusionConfigSettings
 	) {
 		this.turtleValidationConfig = configSettings.turtle.validations;
+		this.commonValidationConfig = configSettings.common.validations;
 	}
 	
 	async validate(uri: string, shaclValidator: ShaclValidator): Promise<Diagnostic[]> {
@@ -62,13 +66,24 @@ export class TurtleValidator implements IRdfValidator {
 			diagnostics.push(...rule.run());
 		}
 		
+		if(enabledMap['duplicateTriple']){
+			const dupliValidator = new DuplicateChecker();
+			const duplDiags = await dupliValidator.validate(parsedGraph);
+			diagnostics.push(...duplDiags);
+		}
 
+		if(this.commonValidationConfig['iriSchemeCheck']){
+			const iriValidator = new IriSchemeValidator(this.documents);
+			const iriDiags = await iriValidator.validate(uri, this.commonValidationConfig);
+			diagnostics.push(...iriDiags);
+		}
+
+		
 		if(enabledMap['shaclConstraint']){
 			const shaclDiags = await shaclValidator.validate(parsedGraph);
 			diagnostics.push(...shaclDiags);
 		}
 
-		
 		return diagnostics;
 	}
 

@@ -34,8 +34,8 @@ export class DataManager {
 		
 		try {
 			parsedGraph = await this.rdfParser.parse(text, fileType);
-
 		} catch (error: any) {
+			this.connection.console.error(`[Data Manager]: Error parsing ${uri}: ${error.message}`);
 			console.error(`Error parsing ${uri}: ${error.message}`);
 			throw new Error(`Parsing error for ${uri}: ${error.message}`);
 		}

@@ -11,6 +11,7 @@ export default class InvalidIri implements ValidationRule {
 	private ast!: Node;
 	private text!: string;
 	private definitions!: { id:string, range:any, typeIri?:string, typeRange?:any }[];
+	private baseOffset: number | null = null;
 
 	init(ctx: {
 		text: string;
@@ -22,12 +23,25 @@ export default class InvalidIri implements ValidationRule {
 		this.ast         = ctx.ast;
 		this.contextMap  = ctx.contextMap;
 		this.definitions = ctx.definitions;
+
+		const baseProp = this.ast.children?.find(child => 
+			child.type === 'property'
+			&& child.children![0].type === 'string' 
+			&& this.text.slice(child.children![0].offset + 1, child.children![0].offset + child.children![0].length)
+		);
+		if(baseProp) {
+			this.baseOffset = baseProp.children![1].offset;
+		}
 	}
 
 	run(): Diagnostic[] {
 		const diags: Diagnostic[] = [];
-		const isAbsolute = (v: string) => !!parseIri(v).scheme;
-
+		// const isAbsolute = (v: string) => !!parseIri(v).scheme;
+		const isAbsolute = (v: string) => {
+			if(parseIri(v).scheme) return true;
+			const [pfx] = v.split(':', 1);
+			return this.contextMap.has(pfx);
+		};
 		// for (const [term, iri] of this.contextMap) {
 		// 	if (typeof iri === 'string') {
 		// 		this.validateIri(term, iri, diags);
@@ -41,7 +55,12 @@ export default class InvalidIri implements ValidationRule {
 		// }
 
 		for (const d of this.definitions) {
-			if (!isAbsolute(d.id) && !d.id.includes(':')) {
+			if (!isAbsolute(d.id) 
+				&& !d.id.includes(':')
+				&& this.baseOffset !== null
+				&& d.range.start?.character >= this.baseOffset
+			) { /* empty */ }
+			else if (!isAbsolute(d.id)) {
 				diags.push(Diagnostic.create(
 					d.range,
 					`Invalid @id IRI: ${d.id}`,
@@ -50,13 +69,19 @@ export default class InvalidIri implements ValidationRule {
 				));
 			}
 
-			if (d.typeIri && !isAbsolute(d.typeIri) && !d.typeIri.includes(':')) {
-				diags.push(Diagnostic.create(
+			// if (d.typeIri && !isAbsolute(d.typeIri) && !d.typeIri.includes(':')) {
+			if(d.typeIri) {
+				const typeRange = d.typeRange ?? d.range;
+				if(!isAbsolute(d.typeIri) 
+					&& !(this.baseOffset !== null)	
+					&& typeRange.start?.character >= this.baseOffset!
+				)
+				{diags.push(Diagnostic.create(
 					d.typeRange ?? d.range,
 					`Invalid @type IRI: ${d.typeIri} - @id IRI: ${d.id}`,
 					DiagnosticSeverity.Warning,
 					"RDFusion"
-				));
+				));}
 			}
 		}
 

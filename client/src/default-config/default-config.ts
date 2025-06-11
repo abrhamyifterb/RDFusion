@@ -1,7 +1,8 @@
 export const defaultTurtleValidations = {
 	xsdTypeCheck:    true,
 	missingTagCheck: true,
-	shaclConstraint: true
+	shaclConstraint: true,
+	duplicateTriple: true
 };
 export type TurtleValidationKey = keyof typeof defaultTurtleValidations;
 
@@ -20,7 +21,8 @@ export const defaultJsonLdValidations = {
 	nonStringLiteral: true,
 	xsdTypeCheck:    true,
 	missingTagCheck: true,
-	shaclConstraint: true
+	shaclConstraint: true,
+	duplicateTriple: true
 };
 export type JsonLdValidationKey = keyof typeof defaultJsonLdValidations;
 
@@ -31,12 +33,11 @@ export const defaultJsonLdAutocomplete = {
 };
 export type JsonLdAutocompleteKey = keyof typeof defaultJsonLdAutocomplete;
 
-
-
 export const turtleValidationLabels: Record<TurtleValidationKey,string> = {
 	xsdTypeCheck:       "XSD-Datatype validation",
 	missingTagCheck:    "Warning on on literals missing datatype or language tag",
-	shaclConstraint:    "SHACL constraint enforcement"
+	shaclConstraint:    "SHACL constraint enforcement",
+	duplicateTriple:    "Duplicate triple check"
 };
 
 export const turtleAutocompleteLabels: Record<TurtleAutocompleteKey,string> = {
@@ -53,7 +54,8 @@ export const jsonLdValidationLabels: Record<JsonLdValidationKey,string> = {
 	xsdTypeCheck: "XSD-Datatype validation",
 	emptyLiteral: "Warning on empty string literals",
 	nonStringLiteral: "Warning on literals missing datatype or language",
-	shaclConstraint: "SHACL constraint enforcement"
+	shaclConstraint: "SHACL constraint enforcement",
+	duplicateTriple: "Duplicate triple check"
 };
 
 export const jsonLdAutocompleteLabels: Record<JsonLdAutocompleteKey,string> = {

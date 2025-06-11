@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { DataManager } from '../../../data/data-manager';
 import { ParsedGraph } from '../../../data/irdf-parser';
 import { GroupFormatter } from '../grouping/turtle/group-by-subject';
@@ -8,32 +9,29 @@ export class MergeGroupService {
 	constructor(private dataManager: DataManager) {}
 
 	public async mergeAndGroup(params: MergeParams): Promise<string> {
-		const baseParsed  = await this.dataManager.parseDocument(
-			params.base.uri, params.base.text, params.base.version
+		const parsedGraphs = await Promise.all(
+			params.files.map(file => this.dataManager.parseDocument(file.uri, file.text, file.version))
 		);
-		const mergeParsed = await this.dataManager.parseDocument(
-			params.merge.uri, params.merge.text, params.merge.version
-		);
-	
-		const mergedQuads = [
-			...baseParsed.quads,
-			...mergeParsed.quads
-		];
-	
-		const mergedPrefixes: Record<string,string> = {
-			...('prefixes'   in baseParsed  ? baseParsed.prefixes   : {}),
-			...('prefixes'   in mergeParsed ? mergeParsed.prefixes  : {}),
-			...('contextMap' in baseParsed  ? Object.fromEntries(baseParsed.contextMap.entries())  : {}),
-			...('contextMap' in mergeParsed ? Object.fromEntries(mergeParsed.contextMap.entries()) : {})
-		};
+
+		const mergedQuads = parsedGraphs.flatMap(parsedGraph => parsedGraph.quads);
 		
+		const mergedPrefixes: Record<string, string> = {};
+		for (const parsedGraph of parsedGraphs) {
+			if ('prefixes' in parsedGraph && parsedGraph.prefixes) {
+				Object.assign(mergedPrefixes, parsedGraph.prefixes);
+			}
+			if ('contextMap' in parsedGraph && parsedGraph.contextMap) {
+				Object.assign(mergedPrefixes, Object.fromEntries(parsedGraph.contextMap.entries()));
+			}
+		}
+
 		for (const [pfx, ns] of Object.entries(mergedPrefixes)) {
 			if (!ns.endsWith('/') && !ns.endsWith('#')) {
 				mergedPrefixes[pfx] = ns + '/';
 			}
 		}
 		
-		console.log(`mergedPrefixes => ${JSON.stringify(mergedPrefixes)}`);
+		// console.log(`mergedPrefixes => ${JSON.stringify(mergedPrefixes)}`);
 	
 		const combined: ParsedGraph = {
 			quads: mergedQuads,

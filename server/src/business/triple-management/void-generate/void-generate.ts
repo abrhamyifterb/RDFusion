@@ -16,11 +16,11 @@ export class VoIDGenerator {
 
 		let declaredVocabs: Set<string>;
 		if ('prefixes' in parsed && parsed.prefixes) {
-		declaredVocabs = new Set(Object.values(parsed.prefixes));
+			declaredVocabs = new Set(Object.values(parsed.prefixes));
 		} else if ('contextMap' in parsed && parsed.contextMap) {
-		declaredVocabs = new Set(parsed.contextMap.values());
+			declaredVocabs = new Set(parsed.contextMap.values());
 		} else {
-		declaredVocabs = new Set();
+			declaredVocabs = new Set();
 		}
 
 		const usedVocabs = new Set<string>();

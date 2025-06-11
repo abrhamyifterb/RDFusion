@@ -21,9 +21,14 @@ export class GroupBySubjectCommand {
       const uri    = args.uri;
       const parsed = this.dataManager.getParsedData(uri) as ParsedGraph | undefined;
       if (!parsed) {
-        this.connection.console.error(`[Group] No parsed data for ${uri}`);
+        this.connection.console.error(`[Group By Subject] No parsed data for ${uri}`);
         return;
       }
+
+			if (('errors' in parsed && parsed.errors?.length)) {
+				this.connection.console.error(`[Group By Subject] Error during parsing data for ${uri}`);
+				return;
+			}
 
       const groupFormatter = new GroupFormatter();
     
@@ -41,7 +46,8 @@ export class GroupBySubjectCommand {
       });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
-      console.error("Grouping Triples errors: " + error);
+      this.connection.console.error(`[Group By Subject] Failed to process:  ${error.message || error.toString()}`);
+      console.error(`[Group By Subject] Failed to process: ${error.message || error.toString()}`);
       return;
     }
   }

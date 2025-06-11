@@ -7,7 +7,7 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { workspace, ExtensionContext } from 'vscode';
+import { workspace, ExtensionContext, Uri } from 'vscode';
 
 import {
 	DidChangeConfigurationNotification,
@@ -32,6 +32,9 @@ import {
 } from './default-config/default-config';
 import { DecorationManager } from './presentation/decoration/decoration-manager';
 import { IriCodeLensProvider } from './presentation/decoration/iri-codelens-provider';
+import { FileItem } from './presentation/activity-bar/file-item';
+import { defaultTurtleFormatConfig, turtleFormattingLabels } from './default-config/turtle-formatting-config';
+import { defaultIriSchemeConfig, IriSchemeConfigLabels } from './default-config/Iri-scheme-config';
 
 let client: LanguageClient;
 
@@ -74,6 +77,7 @@ export function activate(context: ExtensionContext) {
 			{ scheme: 'file', language: 'jsonld' }  
 		],
 		synchronize: {
+			configurationSection: 'rdfusion',
 			fileEvents: workspace.createFileSystemWatcher('**/.{ttl, jsonld}')
 		},
 		initializationOptions: {
@@ -82,13 +86,19 @@ export function activate(context: ExtensionContext) {
 					validations: workspace.getConfiguration('rdfusion')
 						.get('turtle.validations', defaultTurtleValidations),
 					autocomplete: workspace.getConfiguration('rdfusion')
-						.get('turtle.autocomplete', defaultTurtleAutocomplete)
+						.get('turtle.autocomplete', defaultTurtleAutocomplete),
+					formatting: workspace.getConfiguration('rdfusion')
+						.get('turtle.formatting', defaultTurtleFormatConfig)
 				},
 				jsonld: {
 					validations: workspace.getConfiguration('rdfusion')
 						.get('jsonld.validations', defaultJsonLdValidations),
 					autocomplete: workspace.getConfiguration('rdfusion')
 						.get('jsonld.autocomplete', defaultJsonLdAutocomplete)
+				},
+				common: {
+					validations: workspace.getConfiguration('rdfusion')
+						.get('common.validations', defaultIriSchemeConfig)
 				}
 			}
 		}
@@ -105,7 +115,13 @@ export function activate(context: ExtensionContext) {
 
 	const fileTreeProvider = new FileTreeProvider();
 
-	vscode.window.registerTreeDataProvider("fileExplorer", fileTreeProvider);
+	//vscode.window.registerTreeDataProvider("fileExplorer", fileTreeProvider);
+
+	vscode.window.createTreeView("fileExplorer", {
+		treeDataProvider: fileTreeProvider,
+		showCollapseAll: true,
+		canSelectMany: true,
+	});
 
 	watchFiles(fileTreeProvider);
 
@@ -135,8 +151,6 @@ export function activate(context: ExtensionContext) {
 	scanner.performScan();
 	context.subscriptions.push(scanner);
 
-
-
 	// single status-bar for summary
 	const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
 	context.subscriptions.push(statusBar);
@@ -147,18 +161,24 @@ export function activate(context: ExtensionContext) {
 		const jValid   = config.get<Record<string,boolean>>('jsonld.validations', defaultJsonLdValidations);
 		const tAuto    = config.get<Record<string,boolean>>('turtle.autocomplete', defaultTurtleAutocomplete);
 		const jAuto    = config.get<Record<string,boolean>>('jsonld.autocomplete', defaultJsonLdAutocomplete);
+		const tFormat  = config.get<Record<string,boolean|number>>('turtle.formatting', defaultTurtleFormatConfig);
+		const iriValid = config.get<Record<string,boolean|string>>('common.validations', defaultIriSchemeConfig);
 
 		const enabledCount =
-		Object.values(tValid).filter(v => v).length +
-		Object.values(jValid).filter(v => v).length +
-		Object.values(tAuto).filter(v => v).length +
-		Object.values(jAuto).filter(v => v).length;
+			Object.values(tValid).filter(v => v).length +
+			Object.values(jValid).filter(v => v).length +
+			Object.values(tAuto).filter(v => v).length +
+			Object.values(jAuto).filter(v => v).length +
+			Object.values(iriValid).filter(v => v).length +
+			Object.values(tFormat).filter(v => v).length;
 
 		const totalCount =
-		Object.keys(defaultTurtleValidations).length +
-		Object.keys(defaultJsonLdValidations).length +
-		Object.keys(defaultTurtleAutocomplete).length +
-		Object.keys(defaultJsonLdAutocomplete).length;
+			Object.keys(defaultTurtleValidations).length +
+			Object.keys(defaultJsonLdValidations).length +
+			Object.keys(defaultTurtleAutocomplete).length +
+			Object.keys(defaultJsonLdAutocomplete).length +
+			Object.keys(defaultIriSchemeConfig).length +
+			Object.keys(defaultTurtleFormatConfig).length;
 
 		statusBar.text = `$(checklist) ${enabledCount}/${totalCount} switches ON`;
 		statusBar.tooltip = 'Pick any of the RDFusion toggle commands to reconfigure';
@@ -167,66 +187,70 @@ export function activate(context: ExtensionContext) {
 
 	async function configureSection<K extends string>(
 		configKey: string,
-		defaults: Record<K, boolean>,
+		defaults: Record<K, boolean | number | string>,
 		labelMap: Record<K, string>,
 		sectionName: string
 	) {
 		const config = workspace.getConfiguration('rdfusion');
-		const current = config.get<Record<string,boolean>>(configKey, defaults);
+		const current = config.get<Record<string, boolean | number | string>>(configKey, defaults);
 
 		const items = (Object.keys(defaults) as K[]).map(key => ({
 			key,
 			label: labelMap[key],
-			picked: !!current[key]
-		})) as {
-			key: K;
-			label: string;
-			picked: boolean;
-		}[];
+			picked: !!current[key] 
+		}));
 
 		const picked = await vscode.window.showQuickPick(items, {
 			canPickMany: true,
-			placeHolder: `Select which ${sectionName} to enable`
+			placeHolder: `Select which ${sectionName} to enable/configure`
 		});
 
-		if (!picked) {
-			return;
-		}
+		if (!picked) return;
 
-		const updated: Record<string,boolean> = {};
+		const updated: Record<string, boolean | number | string> = {};
+
 		for (const k of Object.keys(defaults) as K[]) {
-			updated[k] = picked.some(item => item.key === k);
-		}
-
-		const hasWorkspace = !!vscode.workspace.workspaceFolders?.length;
-		const targetWorkspace = hasWorkspace
-			? vscode.ConfigurationTarget.Workspace
-			: vscode.ConfigurationTarget.Global;
-
-		await config.update(configKey, updated, targetWorkspace);
-
-		client.sendNotification(DidChangeConfigurationNotification.type, {
-			settings: {
-				rdfusion: {
-					turtle: {
-						validations: workspace
-							.getConfiguration('rdfusion')
-							.get('turtle.validations', defaultTurtleValidations),
-						autocomplete: workspace
-							.getConfiguration('rdfusion')
-							.get('turtle.autocomplete', defaultTurtleAutocomplete)
-					},
-					jsonld: {
-						validations: workspace
-							.getConfiguration('rdfusion')
-							.get('jsonld.validations', defaultJsonLdValidations),
-						autocomplete: workspace
-							.getConfiguration('rdfusion')
-							.get('jsonld.autocomplete', defaultJsonLdAutocomplete)
+			const isSelected = picked.some(p => p.key === k);
+			const defaultValue = defaults[k];
+		
+			if (typeof defaultValue === 'boolean') {
+				updated[k] = isSelected;
+			} else if (typeof defaultValue === 'number') {
+				if (isSelected) {
+					const input = await vscode.window.showInputBox({
+						prompt: `Enter value for ${labelMap[k]} (number)`,
+						value: current[k]?.toString() ?? defaultValue.toString(),
+						validateInput: (val) =>
+						isNaN(Number(val)) ? 'Must be a valid number' : undefined
+					});
+			
+					if (input !== undefined) {
+						updated[k] = Number(input);
+					} else {
+						updated[k] = defaultValue;
 					}
+				} else {
+					updated[k] = 0;
+				}
+			} else if (typeof defaultValue === 'string') {
+				if (isSelected) {
+					const input = await vscode.window.showInputBox({
+						prompt: `Enter value for ${labelMap[k]} (comma separated)`,
+						value: current[k]?.toString() ?? defaultValue.toString()				
+					});
+			
+					if (input !== undefined) {
+						updated[k] = input;
+					} else {
+						updated[k] = defaultValue;
+					}
+				} else {
+					updated[k] = 0;
 				}
 			}
-		});
+		}
+	
+		await config.update(configKey, updated, vscode.ConfigurationTarget.Global);
 
 		vscode.window.showInformationMessage(`Updated ${sectionName}`);
 		refreshStatus();
@@ -248,44 +272,15 @@ export function activate(context: ExtensionContext) {
 		vscode.commands.registerCommand(
 			'rdfusion.configureJsonldAutocomplete',
 			() => configureSection('jsonld.autocomplete', defaultJsonLdAutocomplete, jsonLdAutocompleteLabels, 'JSON-LD Autocomplete')
+		),
+		vscode.commands.registerCommand(
+			'rdfusion.configureTurtleFormatting',
+			() => configureSection('turtle.formatting', defaultTurtleFormatConfig, turtleFormattingLabels, 'Turtle Formatting')
+		),
+		vscode.commands.registerCommand(
+			'rdfusion.configureIriSchemeValidation',
+			() => configureSection('common.validations', defaultIriSchemeConfig, IriSchemeConfigLabels, 'IRI Scheme Config')
 		)
-	);
-
-	context.subscriptions.push(
-		workspace.onDidChangeConfiguration(change => {
-			if (
-				change.affectsConfiguration('rdfusion.turtle.validations')     ||
-				change.affectsConfiguration('rdfusion.turtle.autocomplete')    ||
-				change.affectsConfiguration('rdfusion.jsonld.validations')     ||
-				change.affectsConfiguration('rdfusion.jsonld.autocomplete')
-			) {
-				client.sendNotification(DidChangeConfigurationNotification.type, {
-					settings: {
-						rdfusion: {
-							turtle: {
-								validations: workspace
-									.getConfiguration('rdfusion')
-									.get('turtle.validations', defaultTurtleValidations),
-								
-								autocomplete: workspace
-									.getConfiguration('rdfusion')
-									.get('turtle.autocomplete', defaultTurtleAutocomplete)
-							},
-							jsonld: {
-								validations: workspace
-									.getConfiguration('rdfusion')
-									.get('jsonld.validations', defaultJsonLdValidations),
-								
-								autocomplete: workspace
-									.getConfiguration('rdfusion')
-									.get('jsonld.autocomplete', defaultJsonLdAutocomplete)
-							}
-						}
-					}
-				});
-				refreshStatus();
-			}
-		})
 	);
 
 	context.subscriptions.push(
@@ -298,6 +293,89 @@ export function activate(context: ExtensionContext) {
 			const uri = editor.document.uri.toString();
 			client.sendRequest('workspace/executeCommand', {
 				command: 'rdf.groupBySubject',
+				arguments: [{ uri }]
+			});
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('rdfusion.sortBySubjectAsc', () => {
+			const editor = vscode.window.activeTextEditor;
+			if (!editor) {
+				vscode.window.showErrorMessage('Open an RDF document first.');
+				return;
+			}
+			const uri = editor.document.uri.toString();
+			const mode = "subject";
+			const direction = "asc";
+			client.sendRequest('workspace/executeCommand', {
+				command: 'rdf.sortTriples',
+				arguments: [{ uri, mode, direction }]
+			});
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('rdfusion.sortBySubjectDesc', () => {
+			const editor = vscode.window.activeTextEditor;
+			if (!editor) {
+				vscode.window.showErrorMessage('Open an RDF document first.');
+				return;
+			}
+			const uri = editor.document.uri.toString();
+			const mode = "subject";
+			const direction = "desc";
+			client.sendRequest('workspace/executeCommand', {
+				command: 'rdf.sortTriples',
+				arguments: [{ uri, mode, direction }]
+			});
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('rdfusion.sortByPredicateAsc', () => {
+			const editor = vscode.window.activeTextEditor;
+			if (!editor) {
+				vscode.window.showErrorMessage('Open an RDF document first.');
+				return;
+			}
+			const uri = editor.document.uri.toString();
+			const mode = "predicate";
+			const direction = "asc";
+			client.sendRequest('workspace/executeCommand', {
+				command: 'rdf.sortTriples',
+				arguments: [{ uri, mode, direction }]
+			});
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('rdfusion.sortByPredicateDesc', () => {
+			const editor = vscode.window.activeTextEditor;
+			if (!editor) {
+				vscode.window.showErrorMessage('Open an RDF document first.');
+				return;
+			}
+			const uri = editor.document.uri.toString();
+			const mode = "predicate";
+			const direction = "desc";
+			client.sendRequest('workspace/executeCommand', {
+				command: 'rdf.sortTriples',
+				arguments: [{ uri, mode, direction }]
+			});
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('rdfusion.formatTriples', () => {
+			const editor = vscode.window.activeTextEditor;
+			if (!editor) {
+				vscode.window.showErrorMessage('Open an RDF document first.');
+				return;
+			}
+			const uri = editor.document.uri.toString();
+			client.sendRequest('workspace/executeCommand', {
+				command: 'rdf.formatTriples',
 				arguments: [{ uri }]
 			});
 		})
@@ -364,9 +442,142 @@ export function activate(context: ExtensionContext) {
 				}]
 				}
 			);
-	
+			
+			const langId = editor.document.languageId;
+
 			const doc = await vscode.workspace.openTextDocument({
-				language: 'turtle',
+				language: langId,
+				content: filteredText
+			});
+			vscode.window.showTextDocument(doc, { preview: false });
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('rdfusion.filterTriplesBySubject', async () => {
+			const editor = vscode.window.activeTextEditor;
+			if (!editor) {
+				vscode.window.showErrorMessage('Open an RDF document first.');
+				return;
+			}
+			const uri = editor.document.uri.toString();
+		
+			const ask = (label: string) =>
+				vscode.window.showInputBox({ prompt: label, placeHolder: 'e.g. ex:Bart, <http://example.org/lisa>, ex:Person' });
+		
+			const subj = await ask('Enter one or more subjects (comma-separated):');
+		
+			const parseList = (userInput?: string) =>
+				userInput
+				? userInput.split(',')
+					.map(s => s.trim())
+					.filter(s => s.length > 0)
+				: [];
+		
+			const subjectFilters   = parseList(subj);
+		
+			const filteredText: string = await client.sendRequest(
+				'workspace/executeCommand',
+				{
+				command: 'rdf.filterTriplesBySubject',
+				arguments: [{
+					uri,
+					subjectFilters
+				}]
+				}
+			);
+			const langId = editor.document.languageId;
+
+			const doc = await vscode.workspace.openTextDocument({
+				language: langId,
+				content: filteredText
+			});
+			vscode.window.showTextDocument(doc, { preview: false });
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('rdfusion.filterTriplesByPredicate', async () => {
+			const editor = vscode.window.activeTextEditor;
+			if (!editor) {
+				vscode.window.showErrorMessage('Open an RDF document first.');
+				return;
+			}
+			const uri = editor.document.uri.toString();
+		
+			const ask = (label: string) =>
+				vscode.window.showInputBox({ prompt: label, placeHolder: 'e.g. foaf:mbox, ex:knows, <http://xmlns.com/foaf/0.1/name>' });
+		
+			const pred = await ask('Enter one or more predicates (comma-separated):');
+		
+			const parseList = (userInput?: string) =>
+				userInput
+				? userInput.split(',')
+					.map(s => s.trim())
+					.filter(s => s.length > 0)
+				: [];
+		
+			const predicateFilters = parseList(pred);
+		
+			const filteredText: string = await client.sendRequest(
+				'workspace/executeCommand',
+				{
+				command: 'rdf.filterTriplesByPredicate',
+				arguments: [{
+					uri,
+					predicateFilters
+				}]
+				}
+			);
+
+			const langId = editor.document.languageId;
+
+			const doc = await vscode.workspace.openTextDocument({
+				language: langId,
+				content: filteredText
+			});
+			vscode.window.showTextDocument(doc, { preview: false });
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('rdfusion.filterTriplesByObject', async () => {
+			const editor = vscode.window.activeTextEditor;
+			if (!editor) {
+				vscode.window.showErrorMessage('Open an RDF document first.');
+				return;
+			}
+			const uri = editor.document.uri.toString();
+		
+			const ask = (label: string) =>
+				vscode.window.showInputBox({ prompt: label, placeHolder: 'e.g. 20, "Simpson", <mailto:bart@example.com>' });
+		
+			const obj  = await ask('Enter one or more objects (comma-separated):');
+		
+			const parseList = (userInput?: string) =>
+				userInput
+				? userInput.split(',')
+					.map(s => s.trim())
+					.filter(s => s.length > 0)
+				: [];
+		
+			const objectFilters    = parseList(obj);
+		
+			const filteredText: string = await client.sendRequest(
+				'workspace/executeCommand',
+				{
+				command: 'rdf.filterTriplesByObject',
+				arguments: [{
+					uri,
+					objectFilters
+				}]
+				}
+			);
+			
+			const langId = editor.document.languageId;
+
+			const doc = await vscode.workspace.openTextDocument({
+				language: langId,
 				content: filteredText
 			});
 			vscode.window.showTextDocument(doc, { preview: false });
@@ -383,13 +594,8 @@ export function activate(context: ExtensionContext) {
 			const current = config.get<boolean>('enabled', false);
 			const updated = !current;
 		
-			const hasWorkspace = !!vscode.workspace.workspaceFolders?.length;
-			const targetWorkspace = hasWorkspace
-				? vscode.ConfigurationTarget.Workspace
-				: vscode.ConfigurationTarget.Global;
-		
 			try {
-				await config.update('enabled', updated, targetWorkspace);
+				await config.update('enabled', updated, vscode.ConfigurationTarget.Global);
 			} catch (err: any) {
 				return vscode.window.showErrorMessage(
 				`Could not update IRI shortening setting: ${err.message}`
@@ -422,17 +628,13 @@ export function activate(context: ExtensionContext) {
 			}
 		
 			const newValue = Number(input);
-			const hasWorkspace = !!vscode.workspace.workspaceFolders?.length;
-			const targetWorkspace = hasWorkspace
-				? vscode.ConfigurationTarget.Workspace
-				: vscode.ConfigurationTarget.Global;
 		
 			try {
-				await config.update('maxLength', newValue, targetWorkspace);
+				await config.update('maxLength', newValue, vscode.ConfigurationTarget.Global);
 			
 			} catch (e: any) {
 				return vscode.window.showErrorMessage(
-				`Failed to write settings: ${e.message}`
+					`Failed to write settings: ${e.message}`
 				);
 			}
 		
@@ -442,9 +644,8 @@ export function activate(context: ExtensionContext) {
 				lensProv.refresh();
 			}
 		
-			const scope = hasWorkspace ? 'workspace' : 'user';
 			vscode.window.showInformationMessage(
-				`IRI max length set to ${newValue} in ${scope} settings.`
+				`IRI max length set to ${newValue}.`
 			);
 		}
 	);
@@ -453,60 +654,148 @@ export function activate(context: ExtensionContext) {
 	const toggleOneIri = vscode.commands.registerCommand(
 		'rdfusion.toggleOneIri',
 		(uri: vscode.Uri, key: string) => {
-		const editor = vscode.window.activeTextEditor;
-		if (!editor) {
-			return vscode.window.showErrorMessage('Open a Turtle document first.');
-		}
-		decoMgr.toggle(key);
-		decoMgr.update(editor);
-		lensProv.refresh();
+			const editor = vscode.window.activeTextEditor;
+			if (!editor) {
+				return vscode.window.showErrorMessage('Open a Turtle document first.');
+			}
+			decoMgr.toggle(key);
+			decoMgr.update(editor);
+			lensProv.refresh();
 		}
 	);
 	context.subscriptions.push(toggleOneIri);
 
-
 	context.subscriptions.push(
-		vscode.commands.registerCommand('rdfusion.mergeFiles', async () => {
+		vscode.commands.registerCommand('rdfusion.frameJsonld', async () => {
 			const editor = vscode.window.activeTextEditor;
 			if (!editor) {
-				vscode.window.showErrorMessage('Open one RDF file to merge from.');
+				vscode.window.showErrorMessage('Open an RDF document first.');
 				return;
 			}
-		
-			const baseUri  = editor.document.uri.toString();
-			const baseText = editor.document.getText();
-			const baseVer  = editor.document.version;
-		
-			const [mergeUriFs] = await vscode.window.showOpenDialog({
+			const uri = editor.document.uri.toString();
+
+			const frameFs = await vscode.window.showOpenDialog({
 				canSelectMany: false,
-				filters: { 'RDF Files': ['ttl','jsonld'] }
-			}) || [];
-			if (!mergeUriFs) return;
-		
-			const mergeUri  = mergeUriFs.toString();
-			const mergeBytes = await vscode.workspace.fs.readFile(mergeUriFs);
-			const mergeText  = new TextDecoder('utf8').decode(mergeBytes);
-			const mergeVer   = 0;
-		
-			const mergedTurtle: string = await client.sendRequest(
-				'workspace/executeCommand',
-				{
-				command: 'rdf.mergeFiles',
-				arguments: [{
-					base:  { uri: baseUri,  text: baseText,  version: baseVer  },
-					merge: { uri: mergeUri, text: mergeText, version: mergeVer }
-				}]
-				}
-			);
-		
-			const doc = await vscode.workspace.openTextDocument({
-				content: mergedTurtle,
-				language: 'turtle'
+				openLabel: 'Select a JSON-LD frame template (optional)',
+				filters: { 'JSON-LD Files': ['jsonld', 'json'] }
 			});
-			await vscode.window.showTextDocument(doc, { preview: false });
+
+			if(!frameFs) {return;}
+
+			const bytes = await vscode.workspace.fs.readFile(frameFs[0]);
+			const data = new TextDecoder("utf8").decode(bytes);
+
+			try {
+				client.sendRequest('workspace/executeCommand', {
+					command: 'rdf.frameJsonld',
+					arguments: [{ uri: uri, data }]
+				});
+			} catch (e: any) {
+				vscode.window.showErrorMessage(`JSONLD frame failed: ${e.message}`);
+			}
 		})
 	);
 
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand("rdfusion.mergeFiles",
+			async (
+				item: FileItem | vscode.Uri | undefined,
+				items: (FileItem | vscode.Uri)[] | undefined
+			) => {
+				let filesToMerge: vscode.Uri[] = [];
+		
+				if (Array.isArray(items) && items.length > 0) {
+					filesToMerge = items.map((x) => {
+						if (x instanceof FileItem) {
+							return x.resourceUri;
+						} else {
+							return x; 
+						}
+					});
+				} else if (item instanceof FileItem) {
+					filesToMerge = [item.resourceUri];
+				} else if (item instanceof vscode.Uri) {
+					filesToMerge = [item];
+				} else {
+					const picked = await vscode.window.showOpenDialog({
+						canSelectMany: true,
+						openLabel: "Select RDF files to merge",
+						filters: { "RDF Files": ["ttl", "jsonld"] },
+					});
+
+					if (!picked || picked.length === 0) {
+						return; 
+					}
+
+					filesToMerge = picked;
+				}
+		
+				if (filesToMerge.length === 1) {
+					const choice = await vscode.window.showInformationMessage(
+						"Only one RDF file is selected. What would you like to do?",
+						"Pick more files to merge",
+						"Cancel"
+					);
+
+					if (choice === "Pick more files to merge") {
+						const more = await vscode.window.showOpenDialog({
+							canSelectMany: true,
+							openLabel: "Pick one or more additional RDF files to merge",
+							filters: { "RDF Files": ["ttl", "jsonld"] },
+						});
+						if (!more || more.length === 0) {
+							return;
+						}
+						for (const u of more) {
+							if (!filesToMerge.find((f) => f.toString() === u.toString())) {
+								filesToMerge.push(u);
+							}
+						}
+					} else {
+						return;
+					}
+				}
+		
+				const mergeParamsFiles: { uri: string; text: string; version: number }[] = [];
+				for (const fileUri of filesToMerge) {
+					try {
+						const bytes = await vscode.workspace.fs.readFile(fileUri);
+						const text = new TextDecoder("utf8").decode(bytes);
+						mergeParamsFiles.push({
+							uri: fileUri.toString(),
+							text,
+							version: 0,
+						});
+					} catch (err) {
+						vscode.window.showErrorMessage(
+							`Cannot read ${fileUri.fsPath}: ${(err as any).message}`
+						);
+						return;
+					}
+				}
+		
+				let mergedTurtle: string;
+				try {
+					mergedTurtle = await client.sendRequest("workspace/executeCommand", {
+						command: "rdf.mergeFiles",
+						arguments: [{ files: mergeParamsFiles }],
+					});
+				} catch (err) {
+					vscode.window.showErrorMessage(`Merge failed: ${(err as any).message}`);
+					return;
+				}
+		
+				if (mergedTurtle && mergedTurtle.trim().length > 0) {
+					const doc = await vscode.workspace.openTextDocument({
+						content: mergedTurtle,
+						language: "turtle",
+					});
+					await vscode.window.showTextDocument(doc, { preview: false });
+				}
+			}
+		)
+	);
 
 	context.subscriptions.push(
 		vscode.window.onDidChangeActiveTextEditor(editor => {
@@ -527,7 +816,6 @@ export function activate(context: ExtensionContext) {
 			lensProv
 		),
 		decoMgr,
-		
 	);
 
 	if (vscode.window.activeTextEditor) {
@@ -563,6 +851,23 @@ export function activate(context: ExtensionContext) {
 	);
 
 	refreshStatus();
+
+	client.onNotification('window/logMessage', (params) => {
+		const message = `${params.message}`;
+		switch(params.type) {
+			case 1: 
+				vscode.window.showErrorMessage(message);
+				break;
+			case 2:
+				vscode.window.showWarningMessage(message);
+				break;
+			case 3: 
+				vscode.window.showInformationMessage(message);
+				break;
+			default:
+				console.log('LogMessage:', message);
+		}
+	});
 }
 
 export function deactivate(): Thenable<void> | undefined {

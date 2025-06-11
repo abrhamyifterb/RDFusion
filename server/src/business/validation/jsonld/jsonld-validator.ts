@@ -12,6 +12,8 @@ import { JsonldParsedGraph } from '../../../data/irdf-parser.js';
 import { RDFusionConfigSettings } from '../../../utils/irdfusion-config-settings.js';
 import { ShaclValidator } from '../shacl-validator';
 import { IRdfValidator } from '../irdf-validator';
+import { DuplicateChecker } from '../turtle/duplicate-finder';
+//import IriSchemeValidator from './Iri-scheme-validator';
 
 export class JsonLdValidator implements IRdfValidator {
 	private jsonldValidationConfig;
@@ -57,6 +59,17 @@ export class JsonLdValidator implements IRdfValidator {
 			rule.init(parsed as JsonldParsedGraph);
 			diags.push(...rule.run());
 		}
+
+		if(enabledMap['duplicateTriple']){
+			const dupliValidator = new DuplicateChecker();
+			const duplDiags = await dupliValidator.validate(parsed as JsonldParsedGraph);
+			diags.push(...duplDiags);
+		}
+
+		// const iriValidator = new IriSchemeValidator();
+		// iriValidator.init(parsed as JsonldParsedGraph);
+		// const iriDiags = await iriValidator.validate();
+		// diags.push(...iriDiags);
 		
 		const existingErrors = diags.some(d => d.severity === DiagnosticSeverity.Error);
 		if (!existingErrors && enabledMap['shaclConstraint']) {
