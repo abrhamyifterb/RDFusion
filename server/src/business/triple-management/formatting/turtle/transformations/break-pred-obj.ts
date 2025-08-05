@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { splitTopLevel } from './split-top-level';
 
 export function breakPredObj(
   lines: string[],
   cfg: any
 ): string[] {
-  if(!cfg.breakPredObj) return lines;
+  if(!cfg.breakPredObj) {return lines;}
   
   const out: string[] = [];
   
@@ -13,25 +14,6 @@ export function breakPredObj(
   }
   
   return out;
-}
-
-function splitTopLevel(str: string, sep: string): string[] {
-  const parts: string[] = [];
-  let buf = '', depthP = 0, depthB = 0;
-  for (const ch of str) {
-    if (ch === '(') depthP++;
-    else if (ch === ')') depthP--;
-    else if (ch === '[') depthB++;
-    else if (ch === ']') depthB--;
-    if (ch === sep && depthP === 0 && depthB === 0) {
-      parts.push(buf.trim());
-      buf = '';
-    } else {
-      buf += ch;
-    }
-  }
-  if (buf.trim()) parts.push(buf.trim());
-  return parts;
 }
 
 function formatBrackets(
@@ -43,10 +25,17 @@ function formatBrackets(
   const leadWS  = (rawLine.match(/^(\s*)/) || ['',''])[1];
 
   let db = 0, start = -1;
+  let inString = false, stringDelim = '', prevChar = '';
   for (let i = 0; i < trimmed.length; i++) {
-    if (trimmed[i] === '[' && db === 0) { start = i; break; }
-    if (trimmed[i] === '[') db++;
-    if (trimmed[i] === ']') db--;
+    if ((trimmed[i] === '"' || trimmed[i] === "'") && prevChar !== '\\') {
+      if (!inString) { inString = true; stringDelim = trimmed[i]; }
+      else if (trimmed[i] === stringDelim) { inString = false; }
+    }
+    if(!inString) {
+      if (trimmed[i] === '[' && db === 0) { start = i; break; }
+      if (trimmed[i] === '[') {db++;}
+      if (trimmed[i] === ']') {db--;}
+    }
   }
   if (start < 0) {
     return [rawLine];
@@ -56,12 +45,21 @@ function formatBrackets(
   const rest      = trimmed.slice(start + 1).trim();  
   db = 1;
   let end = -1;
+  inString = false; stringDelim = ''; prevChar = '';
+
   for (let i = 0; i < rest.length; i++) {
-    if (rest[i] === '[') db++;
-    if (rest[i] === ']') {
-      db--;
-      if (db === 0) { end = i; break; }
+    if ((rest[i] === '"' || rest[i] === "'") && prevChar !== '\\') {
+      if (!inString) { inString = true; stringDelim = rest[i]; }
+      else if (rest[i] === stringDelim) { inString = false; }
     }
+    if(!inString) {
+      if (rest[i] === '[') {db++;}
+      if (rest[i] === ']') {
+        db--;
+        if (db === 0) { end = i; break; }
+      }
+    }
+    prevChar = rest[i];
   }
   if (end < 0) {
     return [rawLine];
@@ -83,7 +81,7 @@ function formatBrackets(
 
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i].trim();
-    if (!seg) continue;
+    if (!seg) {continue;}
     const sep = i < segments.length - 1 ? ';' : '';
     const segLine = `${innerIndent}${seg}${sep}`;
     formatBrackets(segLine, cfg, depth + 1).forEach(l => lines.push(l));

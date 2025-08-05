@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { splitTopLevel } from './split-top-level';
 
 export function breakPredicates(lines: string[], cfg: any): string[] {
   if (!cfg.breakPredicates) {return lines;}
@@ -24,23 +25,4 @@ export function breakPredicates(lines: string[], cfg: any): string[] {
     });
   }
   return out;
-}
-
-function splitTopLevel(str: string, sep: string): string[] {
-  const parts: string[] = [];
-  let buf = '', dp = 0, db = 0;
-  for (const ch of str) {
-    if (ch==='(') {dp++;}
-    else if (ch===')') {dp--;}
-    else if (ch==='[') {db++;}
-    else if (ch===']') {db--;}
-    if (ch===sep && dp===0 && db===0) {
-      parts.push(buf.trim());
-      buf = '';
-    } else {
-      buf += ch;
-    }
-  }
-  parts.push(buf.trim());
-  return parts;
 }

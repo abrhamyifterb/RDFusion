@@ -1,3 +1,5 @@
+import { splitTopLevel } from './split-top-level';
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export function breakObjects(lines: string[], cfg: any): string[] {
   if (!cfg.breakObjects) {
@@ -41,23 +43,4 @@ export function breakObjects(lines: string[], cfg: any): string[] {
   }
 
   return result;
-}
-
-function splitTopLevel(str: string, sep: string): string[] {
-  const out: string[] = [];
-  let buf = '', depthP = 0, depthB = 0;
-  for (const ch of str) {
-    if (ch === '(') depthP++;
-    else if (ch === ')') depthP--;
-    else if (ch === '[') depthB++;
-    else if (ch === ']') depthB--;
-    if (ch === sep && depthP === 0 && depthB === 0) {
-      out.push(buf.trim());
-      buf = '';
-    } else {
-      buf += ch;
-    }
-  }
-  out.push(buf.trim());
-  return out;
 }
