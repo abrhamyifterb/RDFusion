@@ -20,7 +20,7 @@ export default class MissingType implements ValidationRule {
 			.map(d => Diagnostic.create(
 				d.range,
 				`Missing @type for node <${d.id}>.`,
-				DiagnosticSeverity.Error,
+				DiagnosticSeverity.Warning,
 				"RDFusion"
 			));
 	}

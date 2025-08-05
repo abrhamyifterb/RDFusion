@@ -212,152 +212,101 @@
 		"configuration": {
 			"title": "RDFusion configurations",
 			"properties": {
-				"rdfusion.turtle.validations": {
-					"type": "object",
-					"description": "Enable or disable each validation rule for turtle (TTL)",
-					"default": {
-						"xsdTypeCheck": true,
-						"missingTagCheck": true,
-						"shaclConstraint": true,
-						"duplicateTriple": true
-					},
-					"properties": {
-						"rdfusion.turtle.validations.xsdTypeCheck": {
-							"type": "boolean",
-							"default": true,
-							"description": "Enable xsd type check validation"
-						},
-						"rdfusion.turtle.validations.missingTagCheck": {
-							"type": "boolean",
-							"label": "Enable checking missing language tag or datatype ",
-							"default": true,
-							"description": "Enable checking missing language tag or datatype"
-						},
-						"rdfusion.turtle.validations.shaclConstraint": {
-							"type": "boolean",
-							"default": true,
-							"description": "Enable shacl validation"
-						},
-						"rdfusion.turtle.validations.duplicateTriple": {
-							"type": "boolean",
-							"default": true,
-							"description": "Enable duplicate triple validation"
-						}
-					}
+				"rdfusion.turtle.validations.xsdTypeCheck": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enable xsd type check validation"
 				},
-				"rdfusion.turtle.autocomplete": {
-					"type": "object",
-					"description": "Enable or disable each validation rule for turtle (TTL)",
-					"default": {
-						"localBased": true,
-						"remoteBased": true,
-						"prefixDeclaration": true
-					},
-					"properties": {
-						"rdfusion.turtle.autocomplete.localBased": {
-							"type": "boolean",
-							"default": true,
-							"description": "Enable local terms autocomplete"
-						},
-						"rdfusion.turtle.autocomplete.remoteBased": {
-							"type": "boolean",
-							"default": true,
-							"description": "Enable remote terms autocomplete"
-						},
-						"rdfusion.turtle.autocomplete.prefixDeclaration": {
-							"type": "boolean",
-							"default": true,
-							"description": "Enable declaring unimported prefix"
-						}
-					}
+				"rdfusion.turtle.validations.missingTagCheck": {
+					"type": "boolean",
+					"label": "Enable checking missing language tag or datatype ",
+					"default": true,
+					"description": "Enable checking missing language tag or datatype"
 				},
-				"rdfusion.jsonld.validations": {
-					"type": "object",
-					"description": "Enable or disable each validation rule for jsonld",
-					"default": {
-						"duplicateId": true,
-						"missingType": true,
-						"undefinedPrefix": true,
-						"missingTagCheck": true,
-						"xsdTypeCheck": true,
-						"emptyLiteral": true,
-						"nonStringLiteral": true,
-						"shaclConstraint": true,
-						"duplicateTriple": true
-					},
-					"properties": {
-						"rdfusion.jsonld.validations.duplicateId": {
-							"type": "boolean",
-							"default": true,
-							"description": "Warning on repeated @id"
-						},
-						"rdfusion.jsonld.validations.missingType": {
-							"type": "boolean",
-							"default": true,
-							"description": "Warning on nodes without explicit @type"
-						},
-						"rdfusion.jsonld.validations.undefinedPrefix": {
-							"type": "boolean",
-							"default": true,
-							"description": "Warning on usage of prefixes not in the context"
-						},
-						"rdfusion.jsonld.validations.missingTagCheck": {
-							"type": "boolean",
-							"default": true,
-							"description": "Warning on missing @type/@language for @value"
-						},
-						"rdfusion.jsonld.validations.xsdTypeCheck": {
-							"type": "boolean",
-							"default": true,
-							"description": "XSD-Datatype validation"
-						},
-						"rdfusion.jsonld.validations.emptyLiteral": {
-							"type": "boolean",
-							"default": true,
-							"description": "Warning on empty string literals"
-						},
-						"rdfusion.jsonld.validations.nonStringLiteral": {
-							"type": "boolean",
-							"default": true,
-							"description": "Warning on literals missing datatype or language"
-						},
-						"rdfusion.jsonld.validations.shaclConstraint": {
-							"type": "boolean",
-							"default": true,
-							"description": "SHACL constraint enforcement"
-						},
-						"rdfusion.jsonld.validations.duplicateTriple": {
-							"type": "boolean",
-							"default": true,
-							"description": "Enable duplicate triple validation"
-						}
-					}
+				"rdfusion.turtle.validations.shaclConstraint": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enable shacl validation"
 				},
-				"rdfusion.jsonld.autocomplete": {
-					"type": "object",
-					"description": "Enable or disable each validation rule for JSONLD",
-					"default": {
-						"localBased": true,
-						"remoteBased": true,
-						"prefixDeclaration": true
-					},
-					"properties": {
-						"rdfusion.jsonld.autocomplete.localBased": {
-							"type": "boolean",
-							"default": true,
-							"description": "Enable local terms autocomplete"
-						},
-						"rdfusion.jsonld.autocomplete.remoteBased": {
-							"type": "boolean",
-							"default": true,
-							"description": "Enable syntax validation"
-						},
-						"rdfusion.jsonld.autocomplete.prefixDeclaration": {
-							"type": "boolean",
-							"default": true,
-							"description": "Enable naming validation"
-						}
-					}
+				"rdfusion.turtle.validations.duplicateTriple": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enable duplicate triple validation"
+				},
+				"rdfusion.turtle.autocomplete.localBased": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enable local terms autocomplete"
+				},
+				"rdfusion.turtle.autocomplete.remoteBased": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enable remote terms autocomplete"
+				},
+				"rdfusion.turtle.autocomplete.prefixDeclaration": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enable declaring unimported prefix"
+				},
+				"rdfusion.jsonld.validations.duplicateId": {
+					"type": "boolean",
+					"default": true,
+					"description": "Warning on repeated @id"
+				},
+				"rdfusion.jsonld.validations.missingType": {
+					"type": "boolean",
+					"default": true,
+					"description": "Warning on nodes without explicit @type"
+				},
+				"rdfusion.jsonld.validations.undefinedPrefix": {
+					"type": "boolean",
+					"default": true,
+					"description": "Warning on usage of prefixes not in the context"
+				},
+				"rdfusion.jsonld.validations.missingTagCheck": {
+					"type": "boolean",
+					"default": true,
+					"description": "Warning on missing @type/@language for @value"
+				},
+				"rdfusion.jsonld.validations.xsdTypeCheck": {
+					"type": "boolean",
+					"default": true,
+					"description": "XSD-Datatype validation"
+				},
+				"rdfusion.jsonld.validations.emptyLiteral": {
+					"type": "boolean",
+					"default": true,
+					"description": "Warning on empty string literals"
+				},
+				"rdfusion.jsonld.validations.nonStringLiteral": {
+					"type": "boolean",
+					"default": true,
+					"description": "Warning on literals missing datatype or language"
+				},
+				"rdfusion.jsonld.validations.shaclConstraint": {
+					"type": "boolean",
+					"default": true,
+					"description": "SHACL constraint enforcement"
+				},
+				"rdfusion.jsonld.validations.duplicateTriple": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enable duplicate triple validation"
+				},
+				"rdfusion.jsonld.autocomplete.localBased": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enable local terms autocomplete"
+				},
+				"rdfusion.jsonld.autocomplete.remoteBased": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enable syntax validation"
+				},
+				"rdfusion.jsonld.autocomplete.prefixDeclaration": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enable naming validation"
 				},
 				"rdfusion.turtle.irishorten.enabled": {
 					"type": "boolean",
@@ -370,94 +319,65 @@
 					"minimum": 7,
 					"description": "Maximum IRI length before collapsing."
 				},
-				"rdfusion.turtle.formatting": {
-					"type": "object",
-					"description": "Enable or disable each Turtle formatting rule",
-					"default": {
-						"breakSubject":             true,
-						"blankLineBetweenSubjects": true,
-						"breakPredicates":          true,
-						"breakObjects": 			false,
-						"breakPredObj":             true,
-						"useKnownPrefixes":         true,
-						"useUntypedNumeric":        true,
-						"compactSingletonLists":    true,
-						"indentSize":               2
-					},
-					"properties": {
-						"rdfusion.turtle.formatting.breakSubject": {
-							"type": "boolean",
-							"default": true,
-							"description": "Place subject on its own line"
-						},
-						"rdfusion.turtle.formatting.blankLineBetweenSubjects": {
-							"type": "boolean",
-							"default": true,
-							"description": "Insert extra blank line between subject blocks"
-						},
-						"rdfusion.turtle.formatting.breakPredicates": {
-							"type": "boolean",
-							"default": true,
-							"description": "Place each predicate-object pair on its own line"
-						},
-						"rdfusion.turtle.formatting.breakObjects": {
-							"type": "boolean",
-							"default": false,
-							"description": "Split comma-separated object lists across lines"
-						},
-						"rdfusion.turtle.formatting.useKnownPrefixes": {
-							"type": "boolean",
-							"default": true,
-							"description": "Refactor full IRIs into prefix form if known"
-						},
-						"rdfusion.turtle.formatting.compactSingletonLists": {
-							"type": "boolean",
-							"default": true,
-							"description": "Render single-element lists as “(item)”"
-						},
-						"rdfusion.turtle.formatting.indentSize": {
-							"type": "number",
-							"default": 2,
-							"description": "Spaces per indent level for predicate lines"
-						},
-						"rdfusion.turtle.formatting.useUntypedNumeric": {
-							"type": "boolean",
-							"default": true,
-							"description": "Emit numeric/boolean literals untyped"
-						},
-						"rdfusion.turtle.formatting.breakPredObj": {
-							"type": "boolean",
-							"default": false,
-							"description": "Align predicates and objects in columns"
-						}
-					}
+				"rdfusion.turtle.formatting.breakSubject": {
+					"type": "boolean",
+					"default": true,
+					"description": "Place subject on its own line"
 				},
-				"rdfusion.common.validations": {
-					"type": "object",
-					"description": "Enable or disable IRI scheme validation and set custom whitelist",
-					"default": {
-						"iriSchemeCheck": true,
-						"strictSchemeCheck": false,
-						"customIriScheme": "http, https, mailto, tel"
-					},
-					"properties": {
-						"rdfusion.common.iriSchemeCheck": {
-							"type": "boolean",
-							"default": true,
-							"description": "Check for non-standard or uncommon IRI schemes"
-						},
-						"rdfusion.common.strictSchemeCheck": {
-							"type": "boolean",
-							"label": "Enable strict mode to only allow custom defined IRI schemes",
-							"default": false,
-							"description": "Enable strict mode to only allow custom defined IRI schemes"
-						},
-						"rdfusion.common.customIriScheme": {
-							"type": "string",
-							"default": "http, https, mailto, tel",
-							"description": "Define a custom comma separated whitelist of allowed IRI schemes, like http, https, mailto, tel"
-						}
-					}
+				"rdfusion.turtle.formatting.blankLineBetweenSubjects": {
+					"type": "boolean",
+					"default": true,
+					"description": "Insert extra blank line between subject blocks"
+				},
+				"rdfusion.turtle.formatting.breakPredicates": {
+					"type": "boolean",
+					"default": true,
+					"description": "Place each predicate-object pair on its own line"
+				},
+				"rdfusion.turtle.formatting.breakObjects": {
+					"type": "boolean",
+					"default": false,
+					"description": "Split comma-separated object lists across lines"
+				},
+				"rdfusion.turtle.formatting.useKnownPrefixes": {
+					"type": "boolean",
+					"default": true,
+					"description": "Refactor full IRIs into prefix form if known"
+				},
+				"rdfusion.turtle.formatting.compactSingletonLists": {
+					"type": "boolean",
+					"default": true,
+					"description": "Render single-element lists as “(item)”"
+				},
+				"rdfusion.turtle.formatting.indentSize": {
+					"type": "number",
+					"default": 2,
+					"description": "Spaces per indent level for predicate lines"
+				},
+				"rdfusion.turtle.formatting.useUntypedNumeric": {
+					"type": "boolean",
+					"default": true,
+					"description": "Emit numeric/boolean literals untyped"
+				},
+				"rdfusion.turtle.formatting.breakPredObj": {
+					"type": "boolean",
+					"default": false,
+					"description": "Align predicates and objects in columns"
+				},
+				"rdfusion.common.validations.iriSchemeCheck": {
+					"type": "boolean",
+					"default": true,
+					"description": "Check for non-standard or uncommon IRI schemes"
+				},
+				"rdfusion.common.validations.strictSchemeCheck": {
+					"type": "boolean",
+					"default": false,
+					"description": "Enable strict mode to only allow custom defined IRI schemes"
+				},
+				"rdfusion.common.validations.customIriScheme": {
+					"type": "string",
+					"default": "http, https, mailto, tel",
+					"description": "Define a custom comma-separated whitelist of allowed IRI schemes"
 				}
 			}
 		}

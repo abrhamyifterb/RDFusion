@@ -35,6 +35,7 @@ import { IriCodeLensProvider } from './presentation/decoration/iri-codelens-prov
 import { FileItem } from './presentation/activity-bar/file-item';
 import { defaultTurtleFormatConfig, turtleFormattingLabels } from './default-config/turtle-formatting-config';
 import { defaultIriSchemeConfig, IriSchemeConfigLabels } from './default-config/Iri-scheme-config';
+import { StatusBarManager } from './presentation/status-bar/status-bar';
 
 let client: LanguageClient;
 
@@ -849,6 +850,8 @@ export function activate(context: ExtensionContext) {
 		{ scheme: 'file' },
 		new InlineCompletionProvider()
 	);
+	
+	StatusBarManager.register(context);
 
 	refreshStatus();
 
