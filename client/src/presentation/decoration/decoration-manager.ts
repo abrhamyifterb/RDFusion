@@ -2,6 +2,9 @@ import * as vscode from 'vscode';
 import { getIriShortenConfig } from '../../default-config/shorten-config';
 import { buildIriKey, makeShort } from '../../utils/iri-shortener';
 
+const IRI_PUNCTUATION_REGEX = /<([^>]+)>(?:[ \t]*([.;])[ \t]*)?/g;
+const JSONLD_IRI_REGEX = /"([A-Za-z][A-Za-z0-9+.-]*:\/\/[^"]+)"/g;
+
 export class DecorationManager implements vscode.Disposable {
 	private openKeys = new Set<string>();
 	private decorationType: vscode.TextEditorDecorationType;
@@ -22,12 +25,24 @@ export class DecorationManager implements vscode.Disposable {
 			editor.setDecorations(this.decorationType, []);
 			return;
 		}
+		let regex:RegExp;
+		if (!enabled) {
+			return [];
+		}
+		if(editor.document.languageId === 'turtle') {
+			regex = IRI_PUNCTUATION_REGEX;
+		}
+		else if (editor.document.languageId === 'jsonld') {
+			regex = JSONLD_IRI_REGEX;
+		}	
+		else {
+			return;
+		}
 
-		const IRI_PUNCTUATION_REGEX = /<([^>]+)>(?:[ \t]*([.;])[ \t]*)?/g;
 		const text = editor.document.getText();
 		const ranges: vscode.DecorationOptions[] = [];
 
-		for (const m of text.matchAll(IRI_PUNCTUATION_REGEX)) {
+		for (const m of text.matchAll(regex)) {
 			const fullIri   = m[1];
 			const punctuation     = m[2] || '';
 			const fullMatch = m[0];            
