@@ -249,9 +249,10 @@ export function activate(context: ExtensionContext) {
 					updated[k] = 0;
 				}
 			}
+			await config.update(`${configKey}.${k}`, updated[k], vscode.ConfigurationTarget.Global);
 		}
 	
-		await config.update(configKey, updated, vscode.ConfigurationTarget.Global);
+		// await config.update(configKey, updated, vscode.ConfigurationTarget.Global);
 
 		vscode.window.showInformationMessage(`Updated ${sectionName}`);
 		refreshStatus();
