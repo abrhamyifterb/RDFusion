@@ -1,0 +1,5 @@
+{
+  "@context": { "ex": "http://ex/" },
+  "@id": "http://ex/s",
+  "ex:p": "hello"
+}

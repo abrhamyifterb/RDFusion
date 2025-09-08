@@ -20,9 +20,11 @@ export default class ListRule implements ValidationRule {
 		walkAst(this.ast, node => {
 			if (
 				node?.type === 'property' &&
-				nodeText(this.text, node.children![0]) === '"@list"'
+				Array.isArray(node.children) &&
+				node.children.length >= 2 &&
+				nodeText(this.text, node.children[0]) === '"@list"'
 			) {
-				const valueNode = node.children![1];
+				const valueNode = node.children[1];
 				if (valueNode?.type !== 'array') {
 					diags.push(Diagnostic.create(
 						nodeToRange(this.text, valueNode),

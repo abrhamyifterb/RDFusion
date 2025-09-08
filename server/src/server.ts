@@ -15,7 +15,9 @@ import {
 	CompletionParams,
 	DocumentDiagnosticParams,
 	DocumentDiagnosticReport,
-	// TextDocumentPositionParams
+	CodeActionKind,
+	CodeAction,
+	CodeActionParams
 } from 'vscode-languageserver/node.js';
 
 import {
@@ -33,7 +35,6 @@ import { Fetcher } from './business/autocomplete/prefix/fetcher.js';
 import { TermProvider } from './business/autocomplete/term-completion/term-provider.js';
 import { TtlTermCompletionProvider } from './business/autocomplete/term-completion/ttl-term-completion-provider.js';
 import { JsonLdTermCompletionProvider } from './business/autocomplete/term-completion/jsonld-term-completion-provider.js';
-//import { ShaclCompletionProvider } from './business/autocomplete/shacl-based/shacl-completion-provider.js';
 import { ShaclRegistry } from './business/autocomplete/shacl-based/shacl-registry.js';
 import { RDFusionConfigSettings } from './utils/irdfusion-config-settings.js';
 import { GroupBySubjectCommand } from './business/triple-management/grouping/group-by-subject-command.js';
@@ -43,8 +44,10 @@ import { MergeGroupCommand, MergeParams } from './business/triple-management/mer
 import { SortTriplesCommand } from './business/triple-management/sorting/sorting-triples-command.js';
 import { TurtleFormatterCommand } from './business/triple-management/formatting/turtle/turtle-formatter-command.js';
 import { JsonldFrameCommand } from './business/triple-management/formatting/jsonld/jsonld-frame-command.js';
-// import { ShaclCompletionProvider } from './business/autocomplete/shacl-based/shacl-completion-provider.js';
-// import { DocumentCache } from './business/autocomplete/shacl-based/document-cache.js';
+import { RdfDiffService } from './business/triple-management/rdf-diff/ttl-diff-command.js';
+import { JsonLdRefactorProvider } from './business/autocomplete/prefix/jsonld/jsonld-prefix-refactor.js';
+import { JsonLdRenameProvider } from './business/autocomplete/prefix/jsonld/jsonld-rename-provider.js';
+import { JsonLdDifferentModesCommand } from './business/triple-management/formatting/jsonld/jsonld-formatting-command.js';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -82,7 +85,9 @@ const termProvider   = new TermProvider(dataManager, prefixRegistry, serverConfi
 
 termProvider.init();
 
-
+const ttlDiff   = new RdfDiffService(
+	connection, documents, dataManager
+);
 
 const groupCommand   = new GroupBySubjectCommand(
 	dataManager, connection, documents
@@ -103,16 +108,14 @@ const jsonldTermProvider = new JsonLdTermCompletionProvider(termProvider, prefix
 
 const turtleFormatterCommand = new TurtleFormatterCommand(dataManager, connection, documents, prefixRegistry, serverConfigSettings);
 const jsonldFrameCommand = new JsonldFrameCommand(dataManager, connection, documents);
+const jsonldFormattingCommand = new JsonLdDifferentModesCommand(dataManager, connection, documents, prefixRegistry);
 
 const initialShapes  = shapeManager.getGlobalShapes();
 const shaclRegistry = new ShaclRegistry(initialShapes);
-//const docCache  = new DocumentCache();
-//const shaclProvider = new ShaclCompletionProvider(dataManager, docCache, shaclRegistry, connection);
-
-
 const diagnosticCache = new Map<string, { version: number; items: Diagnostic[] }>();
 
-
+const refactor = new JsonLdRefactorProvider(connection, dataManager, documents, prefixRegistry);
+const rename = new JsonLdRenameProvider(connection, dataManager, documents);
 
 connection.onInitialize((params: InitializeParams) => {
 	// // console.log('SERVER: onInitialize acessed ....');
@@ -130,21 +133,14 @@ connection.onInitialize((params: InitializeParams) => {
 	const result: InitializeResult = {
 		capabilities: {
 			textDocumentSync: TextDocumentSyncKind.Incremental,
+			renameProvider: { prepareProvider: true },
 			completionProvider: {
 				resolveProvider: false,
 				triggerCharacters: [':', '"', '@']
 			},
-			diagnosticProvider: {
-				documentSelector: [
-					{ scheme: 'file', language: 'turtle' },
-					{ scheme: 'file', language: 'jsonld' }
-				],
-				interFileDependencies: false,
-				workspaceDiagnostics: false
-			},
-			inlineCompletionProvider: true,
 			executeCommandProvider: {
 				commands: [
+					'jsonld.applyPrefixServer',
 					'rdf.groupBySubject',
 					'rdf.filterTriples',
 					'rdf.filterTriplesBySubject',
@@ -154,8 +150,23 @@ connection.onInitialize((params: InitializeParams) => {
 					'rdf.generateVoID',
 					'rdf.mergeFiles',
 					'rdf.frameJsonld',
-					'rdf.formatTriples'
+					'rdf.formatTriples',
+					'rdf.compactJsonld',
+					'rdf.expandJsonld',
+					'rdf.flattenJsonld',
 				]
+			},
+			diagnosticProvider: {
+				documentSelector: [
+					{ scheme: 'file', language: 'turtle' },
+					{ scheme: 'file', language: 'jsonld' }
+				],
+				interFileDependencies: false,
+				workspaceDiagnostics: false
+			},
+			codeActionProvider: {
+				codeActionKinds: [CodeActionKind.Refactor],
+				resolveProvider: false,
 			},
 		}
 	};
@@ -208,14 +219,6 @@ connection.onDidChangeConfiguration(change => {
 	termProvider.updateSettings(serverConfigSettings);
 	ttlProvider.updateSettings(serverConfigSettings);
 	turtleFormatterCommand.updateSettings(serverConfigSettings);
-	// documents.all().forEach(doc =>
-	// 	validationManager.validate(doc.uri)
-	// 		.then(diags => connection.sendDiagnostics({ uri: doc.uri, diagnostics: diags }))
-	// );
-
-	// Refresh the diagnostics since the `maxNumberOfProblems` could have changed.
-	// We could optimize things here and re-fetch the setting first can compare it
-	// to the existing setting, but this is out of scope for this example.
 	connection.languages.diagnostics.refresh();
 });
 
@@ -226,10 +229,6 @@ connection.onNotification('workspace/parsedRdf', async (params: { uri: string; t
 		const parsedGraph = await dataManager.parseDocument(params.uri, params.text, params.version);
 		shapeManager.updateShapeIndex(params.uri, parsedGraph);
 		shaclRegistry.update(shapeManager.getGlobalShapes());
-		 
-		// const diagnostics: Diagnostic[] = await validationManager.validate(params.uri);
-		// connection.sendDiagnostics({ uri: params.uri, diagnostics });
-		// console.log(`[Server] Processed workspace file ${params.uri}`);
 	} catch (error: any) {
 		console.error(`[Server] Error processing ${params.uri}: ${error.message}`);
 	}
@@ -243,10 +242,6 @@ documents.onDidOpen((event) => {
 	dataManager.parseDocument(event.document.uri, event.document.getText(), event.document.version)
     .then((parsedGraph: any) => {
 		shapeManager.updateShapeIndex(event.document.uri, parsedGraph);
-		//docCache.update(event.document.uri, event.document.getText(), parsedGraph);
-		// validationManager.validate(event.document.uri).then((_diagnostics: any) => {
-		// 	// connection.sendDiagnostics({ uri: event.document.uri, diagnostics });
-		// });
     })
     .catch((err: { message: any; }) => connection.console.error(`Error parsing ${event.document.uri}: ${err.message}`));
 });
@@ -255,10 +250,6 @@ documents.onDidChangeContent((change) => {
 	dataManager.parseDocument(change.document.uri, change.document.getText(), change.document.version)
 		.then((parsedGraph: any) => {
 			shapeManager.updateShapeIndex(change.document.uri, parsedGraph);
-			//docCache.update(change.document.uri, change.document.getText(), parsedGraph);
-		// 	validationManager.validate(change.document.uri).then((_diagnostics: any) => {
-		// 	// connection.sendDiagnostics({ uri: change.document.uri, diagnostics });
-		// });
     })
     .catch((err: { message: unknown; }) => connection.console.error(`Error updating ${change.document.uri}: ${err.message}`));
 });
@@ -282,77 +273,156 @@ connection.onCompletion(async (params: CompletionParams) => {
 	return [];
 });
 
+interface UriArg {
+	uri: string;
+}
+
+interface FilterArgs {
+	uri: string;
+	subjectFilters?: string[];
+	predicateFilters?: string[];
+	objectFilters?: string[];
+}
+
+interface SortArgs {
+	uri: string;
+	mode: string; 
+	direction: string; 
+}
+
+interface FrameArgs {
+	uri: string;
+	data: string; 
+}
 
 
-// connection.onRequest('textDocument/inlineCompletion', async (params: TextDocumentPositionParams) => {
-// 	const doc = documents.get(params.textDocument.uri);
-// 	// console.log(`[suggestions] ${JSON.stringify("INSIDE")}`);
-// 	if (!doc) {
-// 		return [];
-// 	}
-// 	if (doc.languageId === 'turtle') {
-// 		const inlineItems = await shaclProvider.provide(params, documents);
-// 		// console.dir(`[suggestions] ${JSON.stringify(inlineItems)}`);
-// 		return inlineItems;
-// 	}
-// 	// console.dir(`[suggestions] ${JSON.stringify("nothing")}`);
-// 	return [];
-// });
+type ExecHandler = (args: any[] | undefined) => Promise<any> | any;
 
+const execHandlers = new Map<string, ExecHandler>();
+
+function registerExec(id: string, handler: ExecHandler) {
+	if (execHandlers.has(id)) {
+		connection.console.warn(`executeCommand handler overwritten: ${id}`);
+	}
+	execHandlers.set(id, handler);
+}
+
+function arg0<T extends object>(args: any[] | undefined, required: (keyof T)[] = []): T {
+	const payload = (args?.[0] ?? {}) as T;
+	for (const k of required) {
+		if ((payload as any)[k] === undefined) {
+		throw new Error(`Missing required argument "${String(k)}" for executeCommand`);
+		}
+	}
+	return payload;
+}
+
+registerExec('jsonld.applyPrefixServer', (args) =>
+	refactor.handleApplyPrefixServer(args)
+);
+
+registerExec('rdf.groupBySubject', async (args) => {
+	const p = arg0<UriArg>(args, ['uri']);
+	return groupCommand.execute(p);
+});
+
+registerExec('rdf.filterTriples', async (args) => {
+	const p = arg0<FilterArgs>(args, ['uri']);
+	return filterCommand.execute(p);
+});
+
+registerExec('rdf.filterTriplesBySubject', async (args) => {
+	const p = arg0<FilterArgs>(args, ['uri']);
+	return filterCommand.execute(p);
+});
+
+registerExec('rdf.filterTriplesByPredicate', async (args) => {
+	const p = arg0<FilterArgs>(args, ['uri']);
+	return filterCommand.execute(p);
+});
+
+registerExec('rdf.filterTriplesByObject', async (args) => {
+	const p = arg0<FilterArgs>(args, ['uri']);
+	return filterCommand.execute(p);
+});
+
+registerExec('rdf.sortTriples', async (args) => {
+	const p = arg0<SortArgs>(args, ['uri', 'mode', 'direction']);
+	return sortCommand.execute(p);
+});
+
+registerExec('rdf.generateVoID', async (args) => {
+	const p = arg0<UriArg>(args, ['uri']);
+	return voidGenerator.execute(p);
+});
+
+registerExec('rdf.mergeFiles', async (args) => {
+	const p = arg0<MergeParams>(args);
+	return mergeGroupCommand.execute(p);
+});
+
+registerExec('rdf.frameJsonld', async (args) => {
+	const p = arg0<FrameArgs>(args, ['uri', 'data']);
+	return jsonldFrameCommand.execute(p);
+});
+
+registerExec('rdf.compactJsonld', async (args) => {
+	const p = arg0<SortArgs>(args, ['uri', 'mode']);
+	return jsonldFormattingCommand.execute(p);
+});
+
+registerExec('rdf.expandJsonld', async (args) => {
+	const p = arg0<SortArgs>(args, ['uri', 'mode']);
+	return jsonldFormattingCommand.execute(p);
+});
+
+registerExec('rdf.flattenJsonld', async (args) => {
+	const p = arg0<SortArgs>(args, ['uri', 'mode']);
+	return jsonldFormattingCommand.execute(p);
+});
+
+registerExec('rdf.formatTriples', async (args) => {
+	const p = arg0<UriArg>(args, ['uri']);
+	connection.console.log('onExecuteCommand: rdf.formatTriples');
+	return turtleFormatterCommand.format(p);
+});
 
 connection.onExecuteCommand(async (params) => {
-	if (params.command === 'rdf.groupBySubject' && params.arguments) {
-		await groupCommand.execute(params.arguments[0] as { uri: string });
+	connection.console.log('onExecuteCommand: ' + JSON.stringify(params));
+
+	const handler = execHandlers.get(params.command);
+	if (!handler) {
+		connection.console.warn(`Unknown executeCommand: ${params.command}`);
+		return;
 	}
-	else if (params.command === 'rdf.filterTriples') {
-		return filterCommand.execute(params?.arguments?.[0] as {
-			uri: string;
-			subjectFilters:   string[];
-			predicateFilters: string[];
-			objectFilters:    string[];
-		});
+
+	try {
+		return await handler(params.arguments);
+	} catch (err: any) {
+		connection.console.error(
+			`executeCommand ${params.command} failed: ${err?.stack || err?.message || String(err)}`
+		);
+		throw err; 
 	}
-	else if (params.command === 'rdf.filterTriplesBySubject') {
-		return filterCommand.execute(params?.arguments?.[0] as {
-			uri: string;
-			subjectFilters?:   string[];
-			predicateFilters?: string[];
-			objectFilters?:    string[];
-		});
-	}
-	else if (params.command === 'rdf.filterTriplesByPredicate') {
-		return filterCommand.execute(params?.arguments?.[0] as {
-			uri: string;
-			subjectFilters?:   string[];
-			predicateFilters?: string[];
-			objectFilters?:    string[];
-		});
-	}	
-	else if (params.command === 'rdf.filterTriplesByObject') {
-		return filterCommand.execute(params?.arguments?.[0] as {
-			uri: string;
-			subjectFilters?:   string[];
-			predicateFilters?: string[];
-			objectFilters?:    string[];
-		});
-	}
-	else if (params.command === 'rdf.sortTriples' && params.arguments) {
-		await sortCommand.execute(params.arguments[0] as { uri: string; mode: string; direction: string });
-	}
-	else if (params.command === 'rdf.generateVoID' && params.arguments) {
-		const generatedVoID = await voidGenerator.execute(params.arguments[0] as { uri: string });
-		return generatedVoID;
-	}
-	else if (params.command === 'rdf.mergeFiles' && params.arguments) {
-		const args = params.arguments[0] as MergeParams;
-		return mergeGroupCommand.execute(args);
-	}
-	else if (params.command === 'rdf.frameJsonld' && params.arguments) {
-		await jsonldFrameCommand.execute(params.arguments[0] as { uri: string, data: string });
-	}
-	else if (params.command === 'rdf.formatTriples' && params.arguments) {
-		await turtleFormatterCommand.format(params.arguments[0] as { uri: string });
-	}
+});
+
+const codeActionProviders: ((p: CodeActionParams) => CodeAction[] | Promise<CodeAction[]>)[] = [
+	refactor.provideCodeActions,
+];
+
+connection.onCodeAction(async (params: CodeActionParams): Promise<CodeAction[]> => {
+	const lists = await Promise.all(
+		codeActionProviders.map((fn) => Promise.resolve(fn(params)))
+	);
+	return lists.flat().filter(Boolean) as CodeAction[];
+});
+
+connection.onPrepareRename((params) => {
+	return rename.prepareRename(params);
+});
+
+connection.onRenameRequest((params) => {
+	return rename.rename(params);
 });
 
 
@@ -382,6 +452,10 @@ connection.onRequest('textDocument/diagnostic',	async (params: DocumentDiagnosti
 	}
 );
 
+
+
+
+ttlDiff.register();
 
 // Make the text document manager listen on the connection
 // for open, change and close text document events

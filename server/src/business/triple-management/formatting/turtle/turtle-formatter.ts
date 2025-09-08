@@ -23,7 +23,6 @@ export class TurtleFormatter {
 		const groupedText = groupFormatter.group(parsed);
 		
 		let lines = groupedText.split('\n');
-		
 		lines = numericUntyped(lines, cfg);
 		lines = compactSingletonLists(lines, cfg);
 		lines = applyKnownPrefixes(lines, cfg, registry);

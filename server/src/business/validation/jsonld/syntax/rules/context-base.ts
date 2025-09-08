@@ -18,9 +18,11 @@ export default class ContextBase implements ValidationRule {
 		walkAst(this.ast, node => {
 		if (
 			node?.type === 'property' &&
-			nodeText(this.text, node.children![0]) === '"@base"'
+			Array.isArray(node.children) &&
+			node.children.length >= 2 &&
+			nodeText(this.text, node.children[0]) === '"@base"'
 		) {
-			const val = node.children![1];
+			const val = node.children[1];
 			if (val?.type === 'string') {
 				const raw = this.text.slice(val?.offset+1, val?.offset+val?.length-1);
 				try { 

@@ -10,7 +10,6 @@ import * as path from 'path';
 import { workspace, ExtensionContext, Uri } from 'vscode';
 
 import {
-	DidChangeConfigurationNotification,
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
@@ -36,30 +35,13 @@ import { FileItem } from './presentation/activity-bar/file-item';
 import { defaultTurtleFormatConfig, turtleFormattingLabels } from './default-config/turtle-formatting-config';
 import { defaultIriSchemeConfig, IriSchemeConfigLabels } from './default-config/Iri-scheme-config';
 import { StatusBarManager } from './presentation/status-bar/status-bar';
+import { registerRdfDiffCommands } from './presentation/rdf-diff/ttl/ttl-diff-commands';
+import { RdfScm } from './presentation/rdf-diff/ttl/ttl-scm-diff';
+import { registerJsonLdBridge } from './presentation/refactor/refactor-jsonld-prefix';
 
 let client: LanguageClient;
 
-
-class InlineCompletionProvider implements vscode.InlineCompletionItemProvider {
-	provideInlineCompletionItems(
-		document: vscode.TextDocument,
-		position: vscode.Position,
-		context: vscode.InlineCompletionContext,
-		token: vscode.CancellationToken
-	): Promise<vscode.InlineCompletionList> {
-	  // Forward the request to the LSP server
-		return client.sendRequest(
-			"textDocument/inlineCompletion",
-			{
-				textDocument: { uri: document.uri.toString() },
-				position: { line: position.line, character: position.character },
-				context,
-			}
-		);
-	}
-}
-
-export function activate(context: ExtensionContext) {
+export async function activate(context: ExtensionContext) {
 	// The server is implemented in node
 	const serverModule = context.asAbsolutePath(
 		path.join('out', 'server.js')
@@ -104,16 +86,21 @@ export function activate(context: ExtensionContext) {
 			}
 		}
 	};
+const trace = vscode.window.createOutputChannel('RDFusion LSP Trace');
 
 	client = new LanguageClient(
 		'languageServerExample',
 		'Language Server Example',
 		serverOptions,
-		clientOptions
+		  {
+			...clientOptions,
+			traceOutputChannel: trace,   // <— add this
+		}
 	);
 
-	client.start();
-
+	await client.start();
+	console.log("client ready ..........");
+	console.log('RDFusion uiKind:', vscode.env.uiKind);
 	const fileTreeProvider = new FileTreeProvider();
 
 	//vscode.window.registerTreeDataProvider("fileExplorer", fileTreeProvider);
@@ -206,7 +193,7 @@ export function activate(context: ExtensionContext) {
 			placeHolder: `Select which ${sectionName} to enable/configure`
 		});
 
-		if (!picked) return;
+		if (!picked) {return;}
 
 		const updated: Record<string, boolean | number | string> = {};
 
@@ -286,14 +273,14 @@ export function activate(context: ExtensionContext) {
 	);
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand('rdfusion.groupBySubject', () => {
+		vscode.commands.registerCommand('rdfusion.groupBySubject', async () => {
 			const editor = vscode.window.activeTextEditor;
 			if (!editor) {
 				vscode.window.showErrorMessage('Open an RDF document first.');
 				return;
 			}
 			const uri = editor.document.uri.toString();
-			client.sendRequest('workspace/executeCommand', {
+			await client.sendRequest('workspace/executeCommand', {
 				command: 'rdf.groupBySubject',
 				arguments: [{ uri }]
 			});
@@ -301,7 +288,7 @@ export function activate(context: ExtensionContext) {
 	);
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand('rdfusion.sortBySubjectAsc', () => {
+		vscode.commands.registerCommand('rdfusion.sortBySubjectAsc', async () => {
 			const editor = vscode.window.activeTextEditor;
 			if (!editor) {
 				vscode.window.showErrorMessage('Open an RDF document first.');
@@ -310,7 +297,7 @@ export function activate(context: ExtensionContext) {
 			const uri = editor.document.uri.toString();
 			const mode = "subject";
 			const direction = "asc";
-			client.sendRequest('workspace/executeCommand', {
+			await client.sendRequest('workspace/executeCommand', {
 				command: 'rdf.sortTriples',
 				arguments: [{ uri, mode, direction }]
 			});
@@ -318,7 +305,7 @@ export function activate(context: ExtensionContext) {
 	);
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand('rdfusion.sortBySubjectDesc', () => {
+		vscode.commands.registerCommand('rdfusion.sortBySubjectDesc', async () => {
 			const editor = vscode.window.activeTextEditor;
 			if (!editor) {
 				vscode.window.showErrorMessage('Open an RDF document first.');
@@ -327,7 +314,7 @@ export function activate(context: ExtensionContext) {
 			const uri = editor.document.uri.toString();
 			const mode = "subject";
 			const direction = "desc";
-			client.sendRequest('workspace/executeCommand', {
+			await client.sendRequest('workspace/executeCommand', {
 				command: 'rdf.sortTriples',
 				arguments: [{ uri, mode, direction }]
 			});
@@ -335,7 +322,7 @@ export function activate(context: ExtensionContext) {
 	);
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand('rdfusion.sortByPredicateAsc', () => {
+		vscode.commands.registerCommand('rdfusion.sortByPredicateAsc', async () => {
 			const editor = vscode.window.activeTextEditor;
 			if (!editor) {
 				vscode.window.showErrorMessage('Open an RDF document first.');
@@ -344,7 +331,7 @@ export function activate(context: ExtensionContext) {
 			const uri = editor.document.uri.toString();
 			const mode = "predicate";
 			const direction = "asc";
-			client.sendRequest('workspace/executeCommand', {
+			await client.sendRequest('workspace/executeCommand', {
 				command: 'rdf.sortTriples',
 				arguments: [{ uri, mode, direction }]
 			});
@@ -352,7 +339,7 @@ export function activate(context: ExtensionContext) {
 	);
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand('rdfusion.sortByPredicateDesc', () => {
+		vscode.commands.registerCommand('rdfusion.sortByPredicateDesc', async () => {
 			const editor = vscode.window.activeTextEditor;
 			if (!editor) {
 				vscode.window.showErrorMessage('Open an RDF document first.');
@@ -361,7 +348,7 @@ export function activate(context: ExtensionContext) {
 			const uri = editor.document.uri.toString();
 			const mode = "predicate";
 			const direction = "desc";
-			client.sendRequest('workspace/executeCommand', {
+			await client.sendRequest('workspace/executeCommand', {
 				command: 'rdf.sortTriples',
 				arguments: [{ uri, mode, direction }]
 			});
@@ -369,17 +356,25 @@ export function activate(context: ExtensionContext) {
 	);
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand('rdfusion.formatTriples', () => {
-			const editor = vscode.window.activeTextEditor;
-			if (!editor) {
-				vscode.window.showErrorMessage('Open an RDF document first.');
-				return;
-			}
+		vscode.commands.registerCommand('rdfusion.formatTriples', async () => {
+		const editor = vscode.window.activeTextEditor;
+		if (!editor) {return vscode.window.showErrorMessage('Open an RDF document first.');}
+
+		try {
+			console.log(
+			'executeCommandProvider:',
+			client.initializeResult?.capabilities.executeCommandProvider?.commands
+			);
+
 			const uri = editor.document.uri.toString();
-			client.sendRequest('workspace/executeCommand', {
+			const res = await client.sendRequest('workspace/executeCommand', {
 				command: 'rdf.formatTriples',
 				arguments: [{ uri }]
 			});
+
+		} catch (err) {
+			vscode.window.showErrorMessage(String(err));
+		}
 		})
 	);
 
@@ -586,6 +581,54 @@ export function activate(context: ExtensionContext) {
 		})
 	);
 
+	context.subscriptions.push(
+		vscode.commands.registerCommand('rdfusion.compactJsonld', async () => {
+			const editor = vscode.window.activeTextEditor;
+			if (!editor) {
+				vscode.window.showErrorMessage('Open an RDF document first.');
+				return;
+			}
+			const uri = editor.document.uri.toString();
+			const mode = "compact";
+			await client.sendRequest('workspace/executeCommand', {
+				command: 'rdf.compactJsonld',
+				arguments: [{ uri, mode }]
+			});
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('rdfusion.flattenJsonld', async () => {
+			const editor = vscode.window.activeTextEditor;
+			if (!editor) {
+				vscode.window.showErrorMessage('Open an RDF document first.');
+				return;
+			}
+			const uri = editor.document.uri.toString();
+			const mode = "flatten";
+			await client.sendRequest('workspace/executeCommand', {
+				command: 'rdf.flattenJsonld',
+				arguments: [{ uri, mode }]
+			});
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('rdfusion.expandJsonld', async () => {
+			const editor = vscode.window.activeTextEditor;
+			if (!editor) {
+				vscode.window.showErrorMessage('Open an RDF document first.');
+				return;
+			}
+			const uri = editor.document.uri.toString();
+			const mode = "expand";
+			await client.sendRequest('workspace/executeCommand', {
+				command: 'rdf.expandJsonld',
+				arguments: [{ uri, mode }]
+			});
+		})
+	);
+
 	const decoMgr = new DecorationManager();
 	const lensProv = new IriCodeLensProvider(decoMgr);
 
@@ -688,7 +731,7 @@ export function activate(context: ExtensionContext) {
 			const data = new TextDecoder("utf8").decode(bytes);
 
 			try {
-				client.sendRequest('workspace/executeCommand', {
+				await client.sendRequest('workspace/executeCommand', {
 					command: 'rdf.frameJsonld',
 					arguments: [{ uri: uri, data }]
 				});
@@ -817,6 +860,10 @@ export function activate(context: ExtensionContext) {
 			{ scheme: 'file', language: 'turtle' },
 			lensProv
 		),
+		vscode.languages.registerCodeLensProvider(
+			{ scheme: 'file', language: 'jsonld'},
+			lensProv
+		),
 		decoMgr,
 	);
 
@@ -840,19 +887,12 @@ export function activate(context: ExtensionContext) {
 		})
 	);
 
-
-	// const inlineCompletionProvider = new InlineCompletionProvider();
-	// vscode.languages.registerInlineCompletionItemProvider(
-	//   { scheme: 'file', language: 'turtle' },
-	//   inlineCompletionProvider
-	// );
-
-	vscode.languages.registerInlineCompletionItemProvider(
-		{ scheme: 'file' },
-		new InlineCompletionProvider()
-	);
+	registerRdfDiffCommands(context, client);
+	const scm = new RdfScm(context, client);
+	context.subscriptions.push(scm);
 	
 	StatusBarManager.register(context);
+	registerJsonLdBridge(context, client);
 
 	refreshStatus();
 

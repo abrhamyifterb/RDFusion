@@ -3,15 +3,16 @@ import { LRUCache } from 'lru-cache';
 
 const CACHE_KEY = 'iana-schemes';
 const ianaCache = new LRUCache<string, Set<string>>({max: 1, ttl: 1000 * 60 * 60 * 24 });
+const URL = 'https://www.iana.org/assignments/uri-schemes/uri-schemes-1.csv';
 
 export async function getIanaSchemes(): Promise<Set<string>> {
 	const cached = ianaCache.get(CACHE_KEY);
+
 	if (cached) {
 		return cached;
 	}
-
-	const url = 'https://www.iana.org/assignments/uri-schemes/uri-schemes-1.csv';
-	const response = await fetch(url);
+	
+	const response = await fetch(URL);
 	if (!response.ok) {
 		console.error(`Failed to fetch IANA CSV (${response.status})`);
 	}

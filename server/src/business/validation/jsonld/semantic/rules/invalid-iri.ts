@@ -1,118 +1,103 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
-import { parse as parseIri }   from 'uri-js';
-import { Node }                from 'jsonc-parser';
-import { nodeToRange } from '../../syntax/utils.js';
-import { ValidationRule } from '../../../utils.js';
+import URI                                from 'uri-js';
+import { Node }                          from 'jsonc-parser';
+import { walkAst, nodeText, nodeToRange } from '../../syntax/utils.js';
+import { ValidationRule }                from '../../../utils.js';
+import { getIanaSchemes }                from '../../../iana-schemes.js';
 
 export default class InvalidIri implements ValidationRule {
 	public readonly key = 'invalidIriCheck';
-	private contextMap!: Map<string,string>;
-	private ast!: Node;
+
 	private text!: string;
-	private definitions!: { id:string, range:any, typeIri?:string, typeRange?:any }[];
-	private baseOffset: number | null = null;
+	private ast!: Node;
+	private contextMap!: Map<string,string>;
+	private iana = new Set<string>();
 
-	init(ctx: {
-		text: string;
-		ast: Node;
-		contextMap: Map<string,string>;
-		definitions: { id:string, range:any, typeIri?:string, typeRange?:any }[];
-	}) {
-		this.text        = ctx.text;
-		this.ast         = ctx.ast;
-		this.contextMap  = ctx.contextMap;
-		this.definitions = ctx.definitions;
-
-		const baseProp = this.ast.children?.find(child => 
-			child.type === 'property'
-			&& child.children![0].type === 'string' 
-			&& this.text.slice(child.children![0].offset + 1, child.children![0].offset + child.children![0].length)
-		);
-		if(baseProp) {
-			this.baseOffset = baseProp.children![1].offset;
-		}
-	}
-
-	run(): Diagnostic[] {
-		const diags: Diagnostic[] = [];
-		// const isAbsolute = (v: string) => !!parseIri(v).scheme;
-		const isAbsolute = (v: string) => {
-			if(parseIri(v).scheme) return true;
-			const [pfx] = v.split(':', 1);
-			return this.contextMap.has(pfx);
-		};
-		// for (const [term, iri] of this.contextMap) {
-		// 	if (typeof iri === 'string') {
-		// 		this.validateIri(term, iri, diags);
-		// 		continue;
-		// 	}
-
-		// 	if (iri && typeof iri === 'object' && typeof (iri as any)['@id'] === 'string') {
-		// 		this.validateIri(term, (iri as any)['@id'], diags);
-		// 		continue;
-		// 	}
-		// }
-
-		for (const d of this.definitions) {
-			if (!isAbsolute(d.id) 
-				&& !d.id.includes(':')
-				&& this.baseOffset !== null
-				&& d.range.start?.character >= this.baseOffset
-			) { /* empty */ }
-			else if (!isAbsolute(d.id)) {
-				diags.push(Diagnostic.create(
-					d.range,
-					`Invalid @id IRI: ${d.id}`,
-					DiagnosticSeverity.Error,
-					"RDFusion"
-				));
-			}
-
-			// if (d.typeIri && !isAbsolute(d.typeIri) && !d.typeIri.includes(':')) {
-			if(d.typeIri) {
-				const typeRange = d.typeRange ?? d.range;
-				if(!isAbsolute(d.typeIri) 
-					&& !(this.baseOffset !== null)	
-					&& typeRange.start?.character >= this.baseOffset!
-				)
-				{diags.push(Diagnostic.create(
-					d.typeRange ?? d.range,
-					`Invalid @type IRI: ${d.typeIri} - @id IRI: ${d.id}`,
-					DiagnosticSeverity.Warning,
-					"RDFusion"
-				));}
-			}
-		}
-
-		return diags;
-	}
-
-	private validateIri(
-		term: string,
-		iri: string,
-		diags: Diagnostic[],
-		messagePrefix = `Invalid context IRI for term`
-		) {
+	public async init(ctx: { text: string; ast: Node; contextMap: Map<string,string> }) {
+		this.text       = ctx.text;
+		this.ast        = ctx.ast;
+		this.contextMap = ctx.contextMap;
 		try {
-			if (/\s/.test(iri)) {
-				diags.push(Diagnostic.create(
-					nodeToRange(this.text, this.ast),
-					`Invalid context IRI for term "${term}": ${iri}`,
-					DiagnosticSeverity.Error,
-					"RDFusion"
-				));
-			}
-			new URL(iri);
+			this.iana = await getIanaSchemes();
 		} catch {
-			diags.push(
-				Diagnostic.create(
-				nodeToRange(this.text, this.ast),
-				`${messagePrefix} "${term}": ${iri}`,
-				DiagnosticSeverity.Error,
-				"RDFusion"
-				)
-			);
+			this.iana = new Set();
 		}
+	}
+
+	public run(): Diagnostic[] {
+		const diags: Diagnostic[] = [];
+	
+		const checkIri = (iri: string, range: any, severity: DiagnosticSeverity) => {
+			if (iri.startsWith('_:')) {return;}
+		
+			const parsed = URI.parse(iri);
+			if (parsed.error) {
+				diags.push(Diagnostic.create(
+					range,
+					`Invalid IRI syntax: ${parsed.error}`,
+					severity,
+					this.key
+				));
+				return;
+			}
+		
+			let scheme = (parsed.scheme || '').toLowerCase();
+			if (scheme.endsWith(':')) {
+				scheme = scheme.slice(0, -1);
+			}
+		
+			if (scheme && this.iana.has(scheme)) {
+				return;  
+			}
+		
+			// eslint-disable-next-line no-useless-escape
+			if (/^[A-Za-z][A-Za-z0-9+.\-]*:\/\//.test(iri)) {
+				return;
+			}
+		
+			if (iri.includes(':')) {
+				const [prefix] = iri.split(':', 1);
+				if (!this.contextMap.has(prefix)) {
+					diags.push(Diagnostic.create(
+						range,
+						`Undefined prefix "${prefix}" in IRI "${iri}".`,
+						DiagnosticSeverity.Error,
+						this.key
+					));
+				}
+				return;
+			}
+		};
+	
+		walkAst(this.ast, node => {
+			if (
+				node?.type === 'property' &&
+				Array.isArray(node.children) &&
+				node.children.length === 2
+			) {
+				const key = nodeText(this.text, node.children[0]).slice(1, -1);
+				const val = node.children[1];
+		
+				if (key === '@id' || key === '@type') {
+					if (val?.type === 'string') {
+						const iri = JSON.parse(nodeText(this.text, val));
+						checkIri(iri, nodeToRange(this.text, val),
+								key === '@id' ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning);
+					}
+					else if (val?.type === 'array') {
+						for (const elt of val.children || []) {
+							if (elt?.type === 'string') {
+								const iri = JSON.parse(nodeText(this.text, elt));
+								checkIri(iri, nodeToRange(this.text, elt),
+										key === '@id' ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning);
+							}
+						}
+					}
+				}
+			}
+		});
+	
+		return diags;
 	}
 }

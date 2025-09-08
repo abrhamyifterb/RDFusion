@@ -1,191 +1,121 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { parse, parseTree, ParseError, printParseErrorCode, Node } from 'jsonc-parser';
-import jsonld from 'jsonld';
-import { Parser as N3Parser, Quad } from 'n3';
-import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
-import { computeLineColumn } from '../compute-line-column.js';
-import { Definition, JsonldParsedGraph } from '../irdf-parser.js';
+import { parse, parseTree, ParseError, printParseErrorCode } from "jsonc-parser";
+import { Parser as N3Parser, Quad } from "n3";
+import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver";
+import * as jsonld from "jsonld";
 
-type IdRangeMap = Map<string, Range>;
+import { ContextExtractor } from "./context/context-extractor";
+import { DefinitionExtractor } from "./definitions/definition-extractor";
+import { IdRangeBuilder } from "./id-range-builder";
+import { QuadPositionAttacher } from "./quad-positions/quad-position-attach";
+import { rangeFromOffsets } from "../../utils/shared/jsonld/range-from-offsets";
 
-export function rangeFromOffsets(text: string, startOff: number, endOff: number): Range {
-	const start = computeLineColumn(text, startOff);
-	const end   = computeLineColumn(text, endOff);
-	return Range.create(start, end);
-}
+import { ActiveContextResolver, setResolvedContext } from "./active-context-resolver";
 
-function extractContextMap(ast: Node, text: string): Map<string,string> {
-	const ctx = new Map<string,string>();
-	const walk = (n: Node) => {
-		if (n.type === 'property'
-		&& text.slice(n.children![0].offset, n.children![0].offset + n.children![0].length) === '"@context"'
-		&& n.children![1].type === 'object'
-		) {
-			for (const entry of n.children![1].children || []) {
-				const keyNode = entry.children![0], valNode = entry.children![1];
-				const term = text.slice(keyNode.offset+1, keyNode.offset+keyNode.length-1);
-				let iri  = text.slice(valNode.offset+1, valNode.offset+valNode.length-1);
-				if (iri.endsWith('/')) {
-					iri = iri.slice(0,-1);
-				}
-				ctx.set(term, iri);
-			}
-		}
-		n.children?.forEach(walk);
-	};
-	walk(ast);
-	return ctx;
-}
-
-function extractDefinitions(ast: Node, text: string): Definition[] {
-	const defs: Definition[] = [];
-	let graphArr: Node|undefined;
-	const findGraph = (n: Node) => {
-		if (n.type === 'property'
-		&& text.slice(n.children![0].offset, n.children![0].offset + n.children![0].length) === '"@graph"'
-		&& n.children![1].type === 'array'
-		) {
-		graphArr = n.children![1];
-		}
-		n.children?.forEach(findGraph);
-	};
-
-	findGraph(ast);
-
-	if (!graphArr) return defs;
-
-	for (const item of graphArr.children || []) {
-		if (item.type !== 'object') continue;
-		let idNode: Node|undefined, typeNode: Node|undefined;
-		for (const prop of item.children || []) {
-			const key = text.slice(prop.children![0].offset, prop.children![0].offset + prop.children![0].length);
-			if (key === '"@id"')   idNode   = prop.children![1];
-			if (key === '"@type"') typeNode = prop.children![1];
-		}
-		if (idNode) {
-			const idVal = text.slice(idNode.offset+1, idNode.offset+idNode.length-1);
-			const def: Definition = { id: idVal, range: rangeFromOffsets(text, idNode.offset, idNode.offset+idNode.length) };
-			if (typeNode) {
-				def.typeIri   = text.slice(typeNode.offset+1, typeNode.offset+typeNode.length-1);
-				def.typeRange = rangeFromOffsets(text, typeNode.offset, typeNode.offset+typeNode.length);
-			}
-			defs.push(def);
-		}
-	}
-
-	return defs;
-}
+import type { JsonldParsedGraph } from "../irdf-parser";
+import { getSharedDocumentLoader } from './auto-document-loader';
 
 export class JsonLdParser {
 	private static readonly parseOptions = { allowTrailingComma: true, disallowComments: false };
+	private contextExtractor    = new ContextExtractor();
+	private definitionExtractor = new DefinitionExtractor();
+	private activeCtxResolver   = new ActiveContextResolver(); 
 
 	async parse(text: string): Promise<JsonldParsedGraph> {
-		const syntaxErrs: ParseError[] = [];
-		const jsonObj = parse(text, syntaxErrs, JsonLdParser.parseOptions);
-		const diagnostics = syntaxErrs.map(e =>
+    if (text.trim() === "") {
+    	return { text, ast: undefined!, contextMap: new Map(), definitions: [], quads: [], diagnostics: [] };
+    }
+
+    const errors: ParseError[] = [];
+    const jsonObj = parse(text, errors, JsonLdParser.parseOptions);
+
+    const diagnostics = errors.map(e =>
+		Diagnostic.create(
+			rangeFromOffsets(text, e?.offset, e?.offset + e.length),
+			printParseErrorCode(e.error),
+			DiagnosticSeverity.Error,
+			e.error,
+			"jsonc-parser"
+		)
+    );
+
+    const ast = parseTree(text, [], JsonLdParser.parseOptions);
+    if (!ast) {
+		diagnostics.push(
 			Diagnostic.create(
-				rangeFromOffsets(text, e.offset, e.offset + e.length),
-				printParseErrorCode(e.error),
-				DiagnosticSeverity.Error,
-				e.error,
-				'jsonc-parser'
+			rangeFromOffsets(text, 0, 0),
+			"Failed to build JSONC AST",
+			DiagnosticSeverity.Error,
+			"jsonc-parser"
 			)
 		);
+		return { text, ast: undefined!, contextMap: new Map(), definitions: [], quads: [], diagnostics };
+    }
 
-		const ast        = parseTree(text, [], JsonLdParser.parseOptions)!;
-		const contextMap = extractContextMap(ast, text);
-		const definitions= extractDefinitions(ast, text);
+    const localContextMap = this.contextExtractor.extract(ast, text);
+    const definitions     = this.definitionExtractor.extract(ast, text);
 
-		const idRanges = this.buildIdRangesFromAst(ast, text, contextMap);
+    let effectiveContextMap = localContextMap;
 
-		let nquads = '';
-		try {
-			nquads = (await jsonld.toRDF(jsonObj, { format:'application/n-quads' })) as string;
-		} catch (error:any) {
-			diagnostics.push(
-				Diagnostic.create(
-				rangeFromOffsets(text, 0, 0),
-				"Invalid JSON-LD syntax",
-				DiagnosticSeverity.Error,
-				error.message,
-				'jsonc-parser'
-				)
-			);
-			// console.error(error);
+    try {
+		const resolved = await this.activeCtxResolver.resolveForDocument(jsonObj);
+		effectiveContextMap = new Map<string, string>();
+		for (const [term, def] of resolved.terms) {
+			if (def["@id"] != null) effectiveContextMap.set(term, def["@id"]!);
 		}
-		const quads = new N3Parser().parse(nquads);
-		this.attachQuadPositions(quads, idRanges);
-		return { text, ast, contextMap, definitions, quads, diagnostics };
-	}
+		setResolvedContext(ast, resolved);
+    } catch (err: any) {
+		diagnostics.push(
+			Diagnostic.create(
+			rangeFromOffsets(text, 0, 0),
+			`Context resolution: ${err?.message ?? err}`,
+			DiagnosticSeverity.Warning,
+			String(err?.message ?? err),
+			"RDFusion"
+			)
+		);
+		setResolvedContext(ast, undefined);
+    }
 
-	private buildIdRangesFromAst(ast: Node | undefined, text: string, ctx: Map<string,string>): IdRangeMap {
-		const idRanges: IdRangeMap = new Map();
-		if (!ast) {
-			return idRanges;
-		}
-		const walk = (node: Node, ancestors: Node[]) => {
-			if (node.type === 'property' && node.children && node.children.length >= 2) {
-				const [keyNode, valNode] = node.children;
-				const keyText = text.slice(keyNode.offset, keyNode.offset + keyNode.length).replace(/"/g, '');
-				if (keyText === '@id') {
-					if (
-						ancestors.length >= 3 &&
-						ancestors[0].type === 'object' &&
-						ancestors[1].type === 'array' &&
-						ancestors[2].type === 'property' &&
-						text.slice(
-							ancestors[2].children![0].offset,
-							ancestors[2].children![0].offset + ancestors[2].children![0].length
-						) === '"@graph"'
-					) {
-						const raw = text.slice(valNode.offset + 1, valNode.offset + valNode.length - 1);
-						const [pfx, loc] = raw.split(':');
-						let base = ctx.get(pfx) ?? pfx;
-						if (base.endsWith('/')) {
-							base = base.slice(0, -1);
-						}
-						let full: string;
-						try { 
-							full = new URL(`${base}/${loc}`).toString(); 
-						} catch { 
-							full = raw; 
-						}
-						const range = this.getRange(text, keyNode.offset, keyNode.length);
-						idRanges.set(full, range);
-					}
-				}
-			}
-			if (node.children) {
-				for (const child of node.children) {
-					walk(child, [node, ...ancestors]);
-				}
-			}
-		};
-		walk(ast, []);
-		return idRanges;
-	}
-	
-	private attachQuadPositions(quads: Quad[], idRanges: IdRangeMap): void {
-		for (const q of quads) {
-			if (q.subject.termType === 'NamedNode') {
-				const r = idRanges.get(q.subject.value);
-				if (r) {
-					(q as any).positionToken = {
-					startLine:   r.start.line + 1,
-					startColumn: r.start.character + 1,
-					endLine:     r.end.line + 1,
-					endColumn:   r.end.character + 1,
-					};
-				}
-			}
-		}
-	}
+    const idRanges = new IdRangeBuilder(localContextMap).extract(ast, text);
 
-	private getRange(text: string, offset: number, length: number): Range {
-		const start = computeLineColumn(text, offset);
-		const end = computeLineColumn(text, offset + length);
-		return Range.create(start, end);
+    const documentLoader = getSharedDocumentLoader();
+
+    let nquads = "";
+    try {
+		nquads = (await jsonld.toRDF(jsonObj, {
+			format: "application/n-quads",
+			documentLoader: documentLoader as any,
+		})) as string;
+	} catch (err: any) {
+		diagnostics.push(
+			Diagnostic.create(
+			rangeFromOffsets(text, 0, 0),
+			"Invalid JSON-LD syntax",
+			DiagnosticSeverity.Error,
+			err?.message ?? String(err),
+			"jsonld"
+			)
+		);
+    }
+
+    let quads: Quad[] = [];
+    try {
+    	quads = new N3Parser().parse(nquads);
+    } catch (err: any) {
+		diagnostics.push(
+			Diagnostic.create(
+			rangeFromOffsets(nquads, 0, nquads.length),
+			`N-Quads parse error: ${err?.message ?? err}`,
+			DiagnosticSeverity.Error,
+			err?.message ?? String(err),
+			"n3"
+			)
+		);
+    }
+
+    new QuadPositionAttacher(idRanges).attach(quads);
+
+    return { text, ast, contextMap: effectiveContextMap, definitions, quads, diagnostics };
 	}
-	
 }
-

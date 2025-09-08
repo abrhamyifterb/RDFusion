@@ -18,9 +18,11 @@ export default class ContextObject implements ValidationRule {
 		walkAst(this.ast, node => {
 		if (
 			node?.type === 'property' &&
-			nodeText(this.text, node.children![0]) === '"@context"'
+			Array.isArray(node.children) &&
+			node.children.length >= 2 &&
+			nodeText(this.text, node.children[0]) === '"@context"'
 		) {
-			const val = node.children![1];
+			const val = node.children[1];
 			if (val?.type !== 'object' && val?.type !== 'null') {
 				diags.push(Diagnostic.create(
 					nodeToRange(this.text, val),

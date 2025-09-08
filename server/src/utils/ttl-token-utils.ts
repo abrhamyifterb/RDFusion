@@ -71,6 +71,7 @@ export function extractLiteralInfos(tokens: any[], prefixMapping: Record<string,
 }
 
 export function resolveDatatype(datatypeStr: string, prefixMapping: Record<string, string>): string {
+	datatypeStr = datatypeStr.replace(/\s+/g, '');
 	if (datatypeStr.startsWith("<") && datatypeStr.endsWith(">")) {
 		return datatypeStr.slice(1, -1);
 	}

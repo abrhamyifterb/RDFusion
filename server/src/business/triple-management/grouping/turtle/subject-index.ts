@@ -1,4 +1,3 @@
-// subjectIndex.ts
 import { Quad } from 'n3';
 import { JsonldParsedGraph, ParsedGraph } from '../../../../data/irdf-parser';
 

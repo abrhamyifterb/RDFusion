@@ -7,6 +7,7 @@ import {
 } from '../../syntax/utils.js';
 import { ValidationRule } from '../../../utils.js';
 import { computeLineColumn } from '../../../../../data/compute-line-column.js';
+import { childAt } from '../../../../../utils/shared/jsonld/child-at.js';
 
 export default class DuplicateCheck implements ValidationRule {
 	public readonly key = 'duplicateTriple';
@@ -22,11 +23,11 @@ export default class DuplicateCheck implements ValidationRule {
 		const diags: Diagnostic[] = [];
 
 		walkAst(this.ast, node => {
-			if (node.type === 'object') {
+			if (node?.type === 'object') {
 				const seenKeys = new Map<string, Node[]>();
 
 				for (const child of node.children ?? []) {
-					if (child.type !== 'property' || !child.children) {continue;}
+					if (child?.type !== 'property' || !child.children) {continue;}
 					const keyNode = child.children[0];
 					const rawKey = nodeText(this.text, keyNode).replace(/^"|"$/g, '');
 					const arr = seenKeys.get(rawKey) || [];
@@ -38,12 +39,13 @@ export default class DuplicateCheck implements ValidationRule {
 					if (props.length <= 1) {continue;}
 
 					for (const propNode of props) {
-						const keyNode = propNode.children![0];
+						//const keyNode = propNode.children![0];
+						const keyNode = childAt(propNode, 0)!;
 
 						const otherPositions = props
 							.filter(r => r !== propNode)
 							.map(r => {
-								const kn = r.children![0];
+								const kn = childAt(r, 0)!;
 								const pos = computeLineColumn(this.text, kn.offset);
 								return `${pos.line+1}`;
 							})
@@ -65,7 +67,7 @@ export default class DuplicateCheck implements ValidationRule {
 		});
 
 		walkAst(this.ast, node => {
-			if (node.type === 'array') {
+			if (node?.type === 'array') {
 				const seenVals = new Map<string, Node[]>();
 
 				for (const elem of node.children ?? []) {
@@ -103,19 +105,19 @@ export default class DuplicateCheck implements ValidationRule {
 		});
 		
 		walkAst(this.ast, node => {
-			if (node.type === 'property' && node.children) {
+			if (node?.type === 'property' && node.children) {
 				const keyNode = node.children[0];
 				const rawKey = nodeText(this.text, keyNode).replace(/^"|"$/g, '');
 				if (rawKey !== '@context') {return;}
 
 				const valNode = node.children[1];
-				if (!valNode || valNode.type !== 'object') {return;}
+				if (!valNode || valNode?.type !== 'object') {return;}
 
 				const iriMap = new Map<string, Node[]>();
 				for (const ctxProp of valNode.children ?? []) {
-					if (ctxProp.type !== 'property' || !ctxProp.children) {continue;}
+					if (ctxProp?.type !== 'property' || !ctxProp.children) {continue;}
 					const vNode = ctxProp.children[1];
-					if (!vNode || vNode.type !== 'string') {continue;}
+					if (!vNode || vNode?.type !== 'string') {continue;}
 
 					const rawIri = nodeText(this.text, vNode).replace(/^"|"$/g, '');
 					const arr = iriMap.get(rawIri) || [];

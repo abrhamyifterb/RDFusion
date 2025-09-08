@@ -27,3 +27,38 @@ declare module '@rdfjs/dataset' {
     const dataset: any;
     export default dataset;
 }
+
+declare module 'rdf-canonize' {
+    interface CanonizeOptions {
+        algorithm?: string;
+        inputFormat?: string;
+        format?: string;
+        skipExpansion?: boolean;
+    }
+
+    function canonize(
+        data: string,
+        options: CanonizeOptions
+    ): Promise<string>;
+
+    export = canonize;
+}
+
+
+declare module 'jsonld-document-loader' {
+    export interface LoadedDocument {
+        documentUrl: string;
+        document: any;
+        contextUrl?: string | null;
+    }
+    export class JsonLdDocumentLoader {
+        constructor();
+        setProtocolHandler(opts: {
+        protocol: string;
+        handler: (url: string) => Promise<LoadedDocument>;
+        }): void;
+        addStatic(url: string, document: any): void;
+        build(): (url: string) => Promise<LoadedDocument>;
+    }
+}
+

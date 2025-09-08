@@ -1,0 +1,7 @@
+{
+  "@context": { "ex": "http://ex/" },
+  "@id": "http://ex/a",
+  "ex:name": { "@value": "hi", "@language": "verybadtag" },
+  "ex:age":  { "@type": "http://www.w3.org/2001/XMLSchema#integer" },
+  "px:prop": "x"
+}

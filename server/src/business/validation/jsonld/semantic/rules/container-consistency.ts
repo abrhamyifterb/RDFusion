@@ -1,61 +1,103 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
+import { ValidationRule } from '../../../utils';
 import { Node } from 'jsonc-parser';
-import { nodeText, nodeToRange, walkAst } from '../../syntax/utils.js';
-import { ValidationRule } from '../../../utils.js';
+import { walkAst, nodeText, nodeToRange } from '../../syntax/utils.js';
 
-export default class ContainerConsistency implements ValidationRule {
-	public readonly key = 'containerConsistencyCheck';
-	private ast!: Node; 
-	private text!: string; 
-	private contextMap!: Map<string, string>;
+export default class ContainerUsageCheck implements ValidationRule {
+	public readonly key = 'containerUsage';
+	private ast!: Node;
+	private text!: string;
 
-	init(ctx: any) {
-		this.ast = ctx.ast;
+	init(ctx: { ast: Node; text: string }) {
+		this.ast  = ctx.ast;
 		this.text = ctx.text;
-		this.contextMap = ctx.contextMap;
 	}
 
 	run(): Diagnostic[] {
 		const diags: Diagnostic[] = [];
-		const containers = new Map<string, string>();
-		
+
+		let contextSpan: { start: number; end: number } | null = null;
 		walkAst(this.ast, node => {
 			if (
 				node?.type === 'property' &&
-				node.children && node.children[0] && nodeText(this.text, node.children[0]) === '"@container"'
+				nodeText(this.text, node.children![0]) === '"@context"'
 			) {
-				const containerType = node.children[1] ? nodeText(this.text, node.children[1]).slice(1, -1) : '';
-				const termNode = node.parent?.parent?.children ? node.parent.parent.children[0] : undefined;
-				const term = termNode ? nodeText(this.text, termNode).slice(1, -1) : '';
-				if (term && containerType) {
-					containers.set(term, containerType);
-				}
+				const valNode = node.children![1];
+				contextSpan = {
+				start: valNode?.offset,
+				end: valNode?.offset + valNode.length
+				};
 			}
 		});
 
+		const contextMap = new Map<string, string[]>();
+		if (contextSpan) {
+			walkAst(this.ast, node => {
+				if (
+				node?.type === 'property' &&
+				node?.offset >= contextSpan!.start &&
+				node?.offset < contextSpan!.end
+				) {
+				const keyNode = node.children![0];
+				const valNode = node.children![1];
+				const term = nodeText(this.text, keyNode).slice(1, -1);
+
+				if (valNode?.type === 'object') {
+					for (const inner of valNode.children ?? []) {
+					const innerKey = nodeText(this.text, inner.children![0]);
+					if (innerKey === '"@container"') {
+						const containerNode = inner.children![1];
+						if (containerNode?.type === 'string') {
+						const c = JSON.parse(nodeText(this.text, containerNode));
+						contextMap.set(term, [c]);
+						} else if (containerNode?.type === 'array') {
+						const arr: string[] = [];
+						for (const item of containerNode.children ?? []) {
+							if (item?.type === 'string') {
+							arr.push(JSON.parse(nodeText(this.text, item)));
+							}
+						}
+						contextMap.set(term, arr);
+						}
+					}
+					}
+				}
+				}
+			});
+		}
+
 		walkAst(this.ast, node => {
 			if (
 				node?.type === 'property' &&
-				node.children && node.children[1] && node.children[1].type !== 'null'
+				!(contextSpan && node?.offset >= contextSpan.start && node?.offset < contextSpan.end)
 			) {
-				const key = nodeText(this.text, node.children[0]).slice(1, -1);
-				const expected = containers.get(key);
+				const [ keyNode, valNode ] = node.children!;
+				const term = nodeText(this.text, keyNode).slice(1, -1);
+				const containers = contextMap.get(term);
+				if (!containers) {return;}
 
-				if (expected === '@list' && node.children[1].type !== 'array') {
-					diags.push(Diagnostic.create(
-						nodeToRange(this.text, node.children[1]),
-						`Property "${key}" defined as @list but value is not an array. ${node.children[1].type}`,
-						DiagnosticSeverity.Warning
-					));
+				if (
+				(containers.includes('@list') || containers.includes('@set'))
+				&& valNode?.type !== 'array'
+				) {
+				diags.push(Diagnostic.create(
+					nodeToRange(this.text, valNode),
+					`Property "${term}" is defined with @container:${containers.join(',')} so its value must be an array.`,
+					DiagnosticSeverity.Error,
+					'RDFusion'
+				));
 				}
 
-				if (expected === '@set' && !['array', 'object'].includes(node.children[1].type)) {
-					diags.push(Diagnostic.create(
-						nodeToRange(this.text, node.children[1]),
-						`Property "${key}" defined as @set but value is not an array or object.`,
-						DiagnosticSeverity.Warning
-					));
+				if (
+				(containers.includes('@language') || containers.includes('@index'))
+				&& valNode?.type !== 'object'
+				) {
+				diags.push(Diagnostic.create(
+					nodeToRange(this.text, valNode),
+					`Property "${term}" is defined with @container:${containers.join(',')} so its value must be an object.`,
+					DiagnosticSeverity.Error,
+					'RDFusion'
+				));
 				}
 			}
 		});

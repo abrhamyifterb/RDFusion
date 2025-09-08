@@ -1,0 +1,4 @@
+@prefix ex: <http://ex/> .
+
+ex:a a ex:Person ;
+  ex:age "old" .

@@ -1,0 +1,12 @@
+{
+  "@context": {
+    "@base": "http://base/",
+    "p": "http://base/p",
+    "q": "http://base/q",
+    "r": "http://base/r"
+  },
+  "@id": "rel",
+  "p": {
+    "@id": "rel2"
+  }
+}

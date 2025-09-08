@@ -20,9 +20,11 @@ export default class ValueScalar implements ValidationRule {
 		walkAst(this.ast, node => {
 		if (
 			node?.type === 'property' &&
-			nodeText(this.text, node.children![0]) === '"@value"'
+			Array.isArray(node.children) &&
+			node.children.length >= 2 &&
+			nodeText(this.text, node.children[0]) === '"@value"'
 		) {
-			const val = node.children![1];
+			const val = node.children[1];
 			if (!SCALARS.has(val?.type)) {
 				diags.push(Diagnostic.create(
 					nodeToRange(this.text, val),

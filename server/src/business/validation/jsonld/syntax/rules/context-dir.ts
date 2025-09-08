@@ -18,9 +18,11 @@ export default class ContextDir implements ValidationRule {
 		walkAst(this.ast, node => {
 		if (
 			node?.type === 'property' &&
-			nodeText(this.text, node.children![0]) === '"@direction"'
+			Array.isArray(node.children) &&
+			node.children.length >= 2 &&
+			nodeText(this.text, node.children[0]) === '"@direction"'
 		) {
-			const val = node.children![1];
+			const val = node.children[1];
 			if (val?.type === 'string') {
 				const raw = this.text.slice(val.offset+1, val.offset+val.length-1);
 				if (!['ltr','rtl'].includes(raw)) {
@@ -31,7 +33,7 @@ export default class ContextDir implements ValidationRule {
 						"RDFusion"
 					));
 				}
-			} else if (val.type !== 'null') {
+			} else if (val?.type !== 'null') {
 				diags.push(Diagnostic.create(
 					nodeToRange(this.text, val),
 					'`@direction` must be string or null.',

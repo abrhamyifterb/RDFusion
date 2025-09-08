@@ -1,0 +1,7 @@
+@prefix ex: <http://ex/> .
+<fake://bad> <http://ex/p> <http://ex/o> .
+<http://ex/s> <http://ex/p> "Alice" .
+<http://ex/s2> <http://ex/age> "3.14"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<http://ex/lang> <http://ex/name> "hi"@verybadtag .
+<http://ex/dup> <http://ex/p> <http://ex/o> .
+<http://ex/dup> <http://ex/p> <http://ex/o> .

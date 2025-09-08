@@ -18,9 +18,11 @@ export default class MissingValue implements ValidationRule {
 		walkAst(this.ast, node => {
 			if (
 				node?.type === 'property' &&
-				nodeText(this.text, node.children![0]) === '"@value"'
+				Array.isArray(node.children) &&
+				node.children.length >= 2 &&
+				nodeText(this.text, node.children[0]) === '"@value"'
 			) {
-				const valNode = node.children![1];
+				const valNode = node.children[1];
 				if (valNode?.type === 'null') {
 					diags.push(Diagnostic.create(
 						nodeToRange(this.text, valNode),

@@ -18,15 +18,37 @@ export default class MissingTypeOrLang implements ValidationRule {
 		const diags: Diagnostic[] = [];
 		walkAst(this.ast, node => {
 			if (node?.type === 'object' && node.children) {
-				const keys = node.children.map(c => nodeText(this.text, c.children![0]));
-				if (keys.includes('"@value"') && !keys.includes('"@type"') && !keys.includes('"@language"')) {
-				const valProp = node.children.find(c => nodeText(this.text, c.children![0]) === '"@value"')!;
-				diags.push(Diagnostic.create(
-					nodeToRange(this.text, valProp.children![0]),
-					'Value object must include either @type or @language alongside @value.',
-					DiagnosticSeverity.Error,
-					"RDFusion"
-				));
+				const keys = node.children.map(c =>
+					Array.isArray(c.children) && c.children.length > 0
+						? nodeText(this.text, c.children[0])
+						: ''
+				);
+				if (
+					keys.includes('"@value"') && 
+					!keys.includes('"@type"') && 
+					!keys.includes('"@language"')
+				) {
+					//const valProp = node.children.find(c => nodeText(this.text, c.children![0]) === '"@value"')!;
+					const valProp = node.children.find(c =>
+						Array.isArray(c.children) &&
+						c.children.length > 0 &&
+						nodeText(this.text, c.children[0]) === '"@value"'
+					);
+
+					if (
+						!valProp ||
+						!Array.isArray(valProp.children) ||
+						valProp.children.length === 0
+					) {
+						return;
+					}
+
+					diags.push(Diagnostic.create(
+						nodeToRange(this.text, valProp.children[0]),
+						'Value object must include either @type or @language alongside @value.',
+						DiagnosticSeverity.Warning,
+						"RDFusion"
+					));
 				}
 			}
 		});

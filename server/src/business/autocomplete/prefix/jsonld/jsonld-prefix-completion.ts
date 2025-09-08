@@ -9,7 +9,7 @@ import {
 	TextEdit,
 	Position
 } from "vscode-languageserver/node.js";
-import { TextDocument } from "vscode-languageserver-textdocument";
+import { Range, TextDocument } from "vscode-languageserver-textdocument";
 import { Node, parseTree } from "jsonc-parser";
 import { PrefixRegistry } from "../prefix-registry.js";
 import { RDFusionConfigSettings } from '../../../../utils/irdfusion-config-settings.js';
@@ -50,8 +50,8 @@ export class JsonLdPrefixCompletionProvider {
 		const lineStart = text.lastIndexOf("\n", offset - 1) + 1;
 		const before    = text.substring(lineStart, offset);
 	
-		const inContext = offset > ctxNode.offset
-						&& offset <= ctxNode.offset + ctxNode.length;
+		const inContext = offset > ctxNode?.offset
+						&& offset <= ctxNode?.offset + ctxNode.length;
 	
 		const justQuote = inContext && /^\s*"$/.test(before);
 
@@ -59,7 +59,7 @@ export class JsonLdPrefixCompletionProvider {
 	
 		const used = new Set<string>();
 		for (const prop of ctxNode.children || []) {
-			if (prop.type === "property" && prop.children) {
+			if (prop?.type === "property" && prop.children) {
 				try {
 					const key = JSON.parse(
 						text.slice(
@@ -80,7 +80,7 @@ export class JsonLdPrefixCompletionProvider {
 			if (!used.has(prefix)) {
 				const iri = await this.registry.ensure(prefix);
 				if (iri) {
-					const edit = this.makeContextInsertEdit(doc, uri, prefix, iri);
+					const edit = this.makeContextInsertEdit(doc, ctxNode, prefix, iri);
 					if (edit) {
 						this.connection.workspace.applyEdit({
 							changes: { [uri]: [ edit ] }
@@ -88,13 +88,13 @@ export class JsonLdPrefixCompletionProvider {
 					}
 				}
 			}
-			return [];
+			//return [];
 		}
 	
 		const all = this.registry.getAll().filter(e => !used.has(e.prefix));
 		const suggestions: CompletionItem[] = [];
 
-		if (inContext && justQuote) {
+		if (inContext && justQuote && (ctxNode.type === 'object' || ctxNode.type === 'array')) {
 			for (const { prefix, iri } of all) {
 				const item = CompletionItem.create(`"${prefix}"`);
 				item.kind             = CompletionItemKind.Module;
@@ -109,7 +109,7 @@ export class JsonLdPrefixCompletionProvider {
 			return suggestions;
 		}
 	
-		if (usageMatch) {
+		if (usageMatch && ctxNode.type !== 'string') {
 			const [, prefix, local] = usageMatch;
 			for (const { prefix: pfx, iri } of all) {
 			if (!pfx.startsWith(prefix)) {continue;}
@@ -121,8 +121,8 @@ export class JsonLdPrefixCompletionProvider {
 			item.insertText       = local == null ? `${pfx}:` : `${pfx}:${local}`;
 			item.documentation    = `\`${pfx}:\` → \`${iri}\``;
 	
-			if (!used.has(pfx)) {
-				const edit = this.makeContextInsertEdit(doc, uri, pfx, iri);
+			if (!used.has(pfx) && ctxNode.type !== 'array') {
+				const edit = this.makeContextInsertEdit(doc, ctxNode, pfx, iri);
 				if (edit) {
 				item.additionalTextEdits = [edit];
 				}
@@ -138,27 +138,50 @@ export class JsonLdPrefixCompletionProvider {
 
 	private makeContextInsertEdit(
 		doc: TextDocument,
-		uri: string,
+		ctxNode: Node,
 		prefix: string,
 		iri: string
 	): TextEdit|undefined {
 		const text = doc.getText();
-		const root = parseTree(text, [], {
-			allowTrailingComma: true,
-			disallowComments:   false
-		});
-		const ctxNode = root && this.findContextNode(root, text);
-		if (!ctxNode) {return;}
-	
-		const bracePos = ctxNode.offset;
-		const insertPos = doc.positionAt(bracePos + 1);
-	
-		const lineText = doc.getText({
-			start: Position.create(insertPos.line, 0),
-			end:   insertPos
-		});
+
+		if (ctxNode.type === 'object') {
+			return this.insertIntoObject(doc, ctxNode, prefix, iri);
+		}
+
+		if (ctxNode.type === 'array') {
+			const objElem = (ctxNode.children || []).find(e => e && e.type === 'object');
+			if (objElem) {
+				return this.insertIntoObject(doc, objElem, prefix, iri);
+			}
+			const insertPos = doc.positionAt(ctxNode.offset + 1);
+			const lineText = doc.getText({ start: Position.create(insertPos.line, 0), end: insertPos });
+			const baseIndent = /^([\s\t]*)/.exec(lineText)?.[1] ?? "";
+			const snippet = `\n${baseIndent}{ "${prefix}": "${iri}" },`;
+			return TextEdit.insert(insertPos, snippet);
+		}
+
+		if (ctxNode.type === 'string') {
+			const raw = text.slice(ctxNode.offset, ctxNode.offset + ctxNode.length); 
+			const start = doc.positionAt(ctxNode.offset);
+			const end = doc.positionAt(ctxNode.offset + ctxNode.length);
+			const range: Range = { start, end };
+			const replacement = `[${raw}, { "${prefix}": "${iri}" }]`;
+			return TextEdit.replace(range, replacement);
+		}
+
+		return undefined;
+	}
+
+
+	private insertIntoObject(
+		doc: TextDocument,
+		objNode: Node,
+		prefix: string,
+		iri: string
+	): TextEdit {
+		const insertPos = doc.positionAt(objNode.offset + 1);
+		const lineText = doc.getText({ start: Position.create(insertPos.line, 0), end: insertPos });
 		const indent = /^[\s\t]*/.exec(lineText)?.[0] ?? "";
-	
 		const snippet = `\n${indent}"${prefix}": "${iri}",`;
 		return TextEdit.insert(insertPos, snippet);
 	}
@@ -168,18 +191,18 @@ export class JsonLdPrefixCompletionProvider {
 		while (stack.length) {
 			const n = stack.pop()!;
 			if (
-				n.type === "property" &&
+				n?.type === "property" &&
 				Array.isArray(n.children) &&
 				n.children.length >= 2 &&
-				n.children[0].type === "string"
+				n.children[0]?.type === "string"
 			) {
 			let key: string|null = null;
 			try {
 				key = JSON.parse(
-				text.slice(
-					n.children[0].offset,
-					n.children[0].offset + n.children[0].length
-				)
+					text.slice(
+						n.children[0].offset,
+						n.children[0].offset + n.children[0].length
+					)
 				);
 			} catch (err: any) { 
 				console.log(`Something went wrong: ${err.message}`); 

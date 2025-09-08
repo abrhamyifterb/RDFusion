@@ -18,9 +18,11 @@ export default class SetRule implements ValidationRule {
 		walkAst(this.ast, node => {
 			if (
 				node?.type === 'property' &&
-				nodeText(this.text, node.children![0]) === '"@set"'
+				Array.isArray(node.children) &&
+				node.children.length >= 2 &&
+				nodeText(this.text, node.children[0]) === '"@set"'
 			) {
-				const val = node.children![1];
+				const val = node.children[1];
 				if (val?.type !== 'array' && val?.type !== 'object') {
 					diags.push(Diagnostic.create(
 						nodeToRange(this.text, val),

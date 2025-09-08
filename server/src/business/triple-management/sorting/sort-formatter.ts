@@ -43,7 +43,6 @@ export class SortFormatter {
 			}
 
 			const subjectKeys = Array.from(bySubject.keys());
-			// subjectKeys.sort((a, b) => compareSubjects(a, b));
 
 			const sortedQuads: typeof quads = [];
 			for (const sub of subjectKeys) {

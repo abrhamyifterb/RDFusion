@@ -1,28 +1,39 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { splitTopLevel } from './split-top-level';
 
-export function breakPredicates(lines: string[], cfg: any): string[] {
-  if (!cfg.breakPredicates) {return lines;}
+export function breakPredicates(
+  lines: string[],
+  cfg: { breakPredicates: boolean; indentSize: number }
+): string[] {
+  if (!cfg.breakPredicates) {
+    return lines;
+  }
 
   const out: string[] = [];
   for (const raw of lines) {
-    const line = raw.trim();
-    const hasDot = line.endsWith('.');
-    const core   = hasDot ? line.slice(0,-1).trim() : line;
+    const indentMatch = raw.match(/^(\s*)/);
+    const baseIndent = indentMatch ? indentMatch[1] : '';
 
-    const segs = splitTopLevel(core, ';');
+    const trimmed = raw.trim();
+    const hasTerm = /[.;]$/.test(trimmed);
+    const termChar = hasTerm ? trimmed.slice(-1) : '';
+    const core    = hasTerm ? trimmed.slice(0, -1).trimEnd() : trimmed;
 
-    segs.forEach((seg, i) => {
-      const term = i === segs.length - 1
-        ? (hasDot ? ' .' : '')
-        : ' ;';
+    const parts = splitTopLevel(core, ';');
 
-      const text = seg.trim() + term;
-      if (i === 0) {out.push(text);}
-      else {
-        out.push(' '.repeat(cfg.indentSize) + text);
-      }
+    parts.forEach((part, i) => {
+      const isLast = i === parts.length - 1;
+      const sep = isLast 
+        ? (termChar === ';' ? ';' : termChar || '') 
+        : ';';
+
+      const prefix = i === 0 
+        ? baseIndent 
+        : baseIndent + ' '.repeat(cfg.indentSize);
+
+      out.push(prefix + part.trim() + sep);
     });
   }
+
   return out;
 }

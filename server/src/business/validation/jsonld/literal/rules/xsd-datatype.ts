@@ -36,9 +36,11 @@ export default class XsdDatatype implements ValidationRule {
 		walkAst(this.ast, node => {
 			if (
 				node?.type === 'property' &&
-				nodeText(this.text, node?.children![0]) === '"@type"'
+				Array.isArray(node.children) &&
+				node.children.length >= 2 &&
+				nodeText(this.text, node.children[0]) === '"@type"'
 			) {
-				const dtNode = node?.children![1];
+				const dtNode = node.children[1];
 				const dt = nodeText(this.text, dtNode).slice(1,-1);
 				
 				const lexEntry = node?.parent?.children?.find(c => c?.children?.[0] && nodeText(this.text, c.children[0]) === '"@value"');
@@ -52,7 +54,7 @@ export default class XsdDatatype implements ValidationRule {
 					if (validators[fullIri] && !validators[fullIri](lex)) {
 						diags.push(Diagnostic.create(
 							nodeToRange(this.text, lexNode),
-							`Invalid lexical form for datatype <${dt}>: "${lex}".`,
+							`Invalid lexical form for <${dt}>: "${lex}".`,
 							DiagnosticSeverity.Error,
 							"RDFusion"
 						));

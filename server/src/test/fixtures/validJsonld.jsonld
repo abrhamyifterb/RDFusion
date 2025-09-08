@@ -1,0 +1,10 @@
+{
+  "@context": { "ex": "http://ex/" },
+  "@id": "http://ex/p1",
+  "@type": "ex:Person",
+  "ex:name": "Marge",
+  "ex:age": { 
+  	"@value": "42", 
+  	"@type": "http://www.w3.org/2001/XMLSchema#integer" 
+  }
+}

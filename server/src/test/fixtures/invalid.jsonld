@@ -1,0 +1,6 @@
+{ 
+	"@context": { 
+		"ex": "http://example.com/" 
+	}, 
+	"@graph": [ { "@id": 42 } ] 
+}

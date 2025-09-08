@@ -166,24 +166,24 @@ export class TurtleCstToQuadsVisitor {
 
   private visitTriple(triple: any): void {
     try{
-    const subjNode = triple.children.subject[0];
-    // console.dir(`[GROUP] Subject node modified lets see => ${JSON.stringify(subjNode)}`);
-    const subject = this.visitSubject(subjNode);
-    const pos = this.extractPosition(subjNode);
+      const subjNode = triple.children.subject[0];
+      // console.dir(`[GROUP] Subject node modified lets see => ${JSON.stringify(subjNode)}`);
+      const subject = this.visitSubject(subjNode);
+      const pos = this.extractPosition(subjNode);
 
-    triple.children.predicateObjectList.forEach((po: any) => {
-      const pairs = this.visitPredicateObjectList(po);
-      pairs.forEach(pair => {
-        pair.objects.forEach(obj => {
-          const q = quad(subject, pair.predicate, obj, defaultGraph());
-          (q as any).positionToken = pos;
-          this.quads.push(q);
+      triple.children.predicateObjectList.forEach((po: any) => {
+        const pairs = this.visitPredicateObjectList(po);
+        pairs.forEach(pair => {
+          pair.objects.forEach(obj => {
+            const q = quad(subject, pair.predicate, obj, defaultGraph());
+            (q as any).positionToken = pos;
+            this.quads.push(q);
+          });
         });
       });
-    });
-  } catch (error: any) {
-    console.dir(`[GROUP] Subject node error ====> ${JSON.stringify(error)}`);
-  }
+    } catch (error: any) {
+      console.dir(`[GROUP] Subject node error ====> ${JSON.stringify(error)}`);
+    }
   }
 
   private visitPredicateObjectList(poList: any): { predicate: any; objects: any[] }[] {

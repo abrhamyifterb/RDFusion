@@ -1,0 +1,34 @@
+{
+  "@context": {
+    "ex": "http://example.com/",
+    "age": {
+      "@id": "ex:age",
+      "@type": "http://www.w3.org/2001/XMLSchema#integer"
+    },
+    "knows": {
+      "@id": "ex:knows",
+      "@type": "@id"
+    },
+    "label": {
+      "@id": "ex:label",
+      "@container": "@language"
+    },
+    "likes": "ex:likes"
+  },
+  "@graph": [
+    {
+      "@id": "ex:a",
+      "age": 42,
+      "knows": {
+        "@id": "ex:b"
+      },
+      "label": {
+        "en": "Hello"
+      }
+    },
+    {
+      "@id": "ex:b",
+      "likes": "Turtle"
+    }
+  ]
+}

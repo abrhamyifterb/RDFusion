@@ -20,25 +20,27 @@ export default class LanguageTag implements ValidationRule {
 		walkAst(this.ast, node => {
 			if (
 				node?.type === 'property' &&
-				nodeText(this.text, node.children![0]) === '"@language"'
+				Array.isArray(node.children) &&
+				node.children.length >= 2 &&		
+				nodeText(this.text, node.children[0]) === '"@language"'
 			) {
-				const langNode = node.children![1];
-				if (langNode.type !== 'string') {
+				const langNode = node.children[1];
+				if (langNode?.type !== 'string') {
 				diags.push(Diagnostic.create(
 					nodeToRange(this.text, langNode),
-					'Language tag must be a JSON string.',
+					'Language tag must be a string.',
 					DiagnosticSeverity.Error
 				));
 				} else {
-				const tag = nodeText(this.text, langNode).slice(1,-1);
-				if (!parseBcp47(tag)?.language) {
-					diags.push(Diagnostic.create(
-						nodeToRange(this.text, langNode),
-						`Invalid BCP-47 language tag: "${tag}".`,
-						DiagnosticSeverity.Warning,
-						"RDFusion"
-					));
-				}
+					const tag = nodeText(this.text, langNode).slice(1,-1);
+					if (!parseBcp47(tag)?.language) {
+						diags.push(Diagnostic.create(
+							nodeToRange(this.text, langNode),
+							`Invalid BCP-47 language tag: "${tag}".`,
+							DiagnosticSeverity.Warning,
+							"RDFusion"
+						));
+					}
 				}
 			}
 		});

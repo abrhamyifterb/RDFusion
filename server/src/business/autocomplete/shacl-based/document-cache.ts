@@ -15,7 +15,6 @@ export class DocumentCache {
     const prefixes = parsed.prefixes || {};
     const quads    = parsed.quads;
 
-    // Build tokensByLine for quick per-line lookup
     const tokensByLine = new Map<number, typeof parsed.tokens>();
     for (const t of parsed.tokens) {
       const ln = text.slice(0, t.startOffset).split(/\r?\n/).length - 1;

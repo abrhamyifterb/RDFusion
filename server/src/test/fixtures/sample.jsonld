@@ -1,0 +1,6 @@
+{
+  "@context": { "ex": "http://ex/" },
+  "@id": "http://ex/a",
+  "ex:p": { "@id": "http://ex/o1" },
+  "ex:name": "Homer"
+}

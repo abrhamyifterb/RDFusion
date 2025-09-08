@@ -18,9 +18,14 @@ export default class NonStringLiteral implements ValidationRule {
 	run(): Diagnostic[] {
 		const diags: Diagnostic[] = [];
 		walkAst(this.ast, node => {
-			if (node?.type === 'string' || node.type === 'number' || node.type === 'boolean') {
-				const parent = node.parent!;
-				if (!(parent.type === 'property' && nodeText(this.text, parent.children![0]) === '"@value"')) {
+			if (node?.type === 'string' || node?.type === 'number' || node?.type === 'boolean') {
+				const parent = node.parent;
+				if (!(
+					parent?.type === 'property' && 
+					Array.isArray(parent.children) &&
+					parent.children.length >= 1 &&
+					nodeText(this.text, parent.children[0]) === '"@value"'
+				)) {
 					diags.push(Diagnostic.create(
 						nodeToRange(this.text, node),
 						`Literal ${nodeText(this.text,node)} without explicit datatype or language.`,

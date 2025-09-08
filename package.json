@@ -3,7 +3,7 @@
 	"description": "RDFusion brings RDF editing and validation directly into VS Code.",
 	"author": "RDFusion",
 	"license": "MIT",
-	"version": "1.0.4",
+	"version": "1.0.6",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/abrhamyifterb/RDFusion"
@@ -27,7 +27,12 @@
 	"main": "out/extension.js",
 	"activationEvents": [
 		"onLanguage:turtle",
-		"onLanguage:jsonld"
+		"onLanguage:jsonld",
+		"onView:scm",
+		"onCommand:rdfdiff.scm.refresh"
+	],
+	"extensionKind": [
+		"workspace"
 	],
 	"contributes": {
 		"viewsContainers": {
@@ -94,7 +99,7 @@
 			},
 			{
 				"command": "rdfusion.configureJsonldValidations",
-				"title": "RDFusion: Toggle JSONLD Validations"
+				"title": "RDFusion: Toggle JSON-LD Validations"
 			},
 			{
 				"command": "rdfusion.configureIriSchemeValidation",
@@ -132,7 +137,7 @@
 			},
 			{
 				"command": "rdfusion.frameJsonld",
-				"title": "RDFusion: Frame Jsonld From Template",
+				"title": "RDFusion: Frame JSON-LD From Template",
 				"enablement": "editorLangId == jsonld"
 			},
 			{
@@ -157,7 +162,7 @@
 			{
 				"command": "rdfusion.mergeFiles",
 				"title": "RDFusion: Merge Files"
-			}, 
+			},
 			{
 				"command": "rdfusion.sortBySubjectAsc",
 				"title": "RDFusion: Sort Triples by Subject Ascending",
@@ -177,6 +182,34 @@
 				"command": "rdfusion.sortByPredicateDesc",
 				"title": "RDFusion: Sort Predicates within Subject Descending",
 				"enablement": "editorLangId == turtle"
+			},
+			{
+				"command": "rdfdiff.compareWithHEAD",
+				"title": "RDFusion: RDF Diff Compare with HEAD"
+			},
+			{
+				"command": "rdfdiff.compareWithRef",
+				"title": "RDFusion: RDF Diff Compare with Ref…"
+			},
+			{
+				"command": "rdfusion.compactJsonld",
+				"title": "RDFusion: Compact JSON-LD",
+				"enablement": "editorLangId == jsonld"
+			},
+			{
+				"command": "rdfusion.expandJsonld",
+				"title": "RDFusion: Expand JSON-LD",
+				"enablement": "editorLangId == jsonld"
+			},
+			{
+				"command": "rdfusion.flattenJsonld",
+				"title": "RDFusion: Flatten JSON-LD",
+				"enablement": "editorLangId == jsonld"
+			},
+			{
+				"command": "jsonld.applyPrefixAndRename",
+				"title": "JSON-LD: Apply Prefix and Rename",
+				"when": "false"
 			}
 		],
 		"menus": {
@@ -207,10 +240,17 @@
 					"when": "resourceExtname =~ /\\.(ttl|jsonld)$/i",
 					"group": "navigation"
 				}
+			],
+			"scm/resourceState/context": [
+				{
+					"command": "rdfdiff.compareWithHEAD",
+					"group": "inline@2",
+					"when": "scmProvider == git && resourceExtname == .ttl"
+				}
 			]
 		},
 		"configuration": {
-			"title": "RDFusion configurations",
+			"title": "RDFusion",
 			"properties": {
 				"rdfusion.turtle.validations.xsdTypeCheck": {
 					"type": "boolean",
@@ -387,11 +427,14 @@
 		"build:client": "esbuild ./client/src/extension.ts --bundle --platform=node --target=node16 --outfile=out/extension.js --external:vscode --minify",
 		"build": "npm run build:client && npm run build:server",
 		"prepackage": "npm run build",
-		"package": "vsce package --dependencies -o rdfusion-1.0.0.vsix",
+		"package": "vsce package --dependencies -o rdfusion-1.0.6.vsix",
 		"compile": "tsc -b",
 		"watch": "tsc -b -w",
 		"lint": "eslint",
-		"test": "sh ./scripts/e2e.sh"
+		"test": "sh ./scripts/e2e.sh",
+		"test:watch": "vitest",
+		"test:server": "vitest --config vitest.config.ts --dir ./server/src/test",
+		"test:coverage": "vitest run --coverage"
 	},
 	"devDependencies": {
 		"@eslint/js": "^9.13.0",
@@ -399,6 +442,7 @@
 		"@types/mocha": "^10.0.6",
 		"@types/node": "^20",
 		"@types/rdf-ext": "^2.5.2",
+		"@vitest/coverage-v8": "^3.2.4",
 		"electron-rebuild": "^3.2.9",
 		"esbuild": "^0.25.4",
 		"eslint": "^9.13.0",
@@ -419,15 +463,24 @@
 		"glob": "^11.0.0",
 		"jsonc-parser": "^3.2.1",
 		"jsonld": "^8.3.3",
+		"ky-universal": "^0.12.0",
 		"lru-cache": "^11.1.0",
 		"millan": "^5.4.0",
 		"n3": "^1.24.2",
 		"node-fetch": "^3.3.2",
+		"node-fetch-cjs": "^3.3.2",
+		"rdf-canonize": "^4.0.1",
 		"rdf-dereference": "^4.0.0",
 		"rdf-ext": "^2.5.2",
 		"shacl-engine": "^1.0.2",
+		"undici": "^6.21.3",
+		"uri-js": "^4.4.1",
+		"vitest": "^3.2.4",
 		"vscode-languageclient": "^9.0.1",
 		"vscode-languageserver": "^9.0.1",
 		"vscode-languageserver-textdocument": "^1.0.11"
-	}
+	},
+	"extensionDependencies": [
+		"vscode.git"
+	]
 }

@@ -18,14 +18,23 @@ export default class LanguageValue implements ValidationRule {
 		walkAst(this.ast, node => {
 		if (
 			node?.type === 'property' &&
-			nodeText(this.text, node.children![0]) === '"@language"'
+			Array.isArray(node.children) &&
+			node.children.length >= 1 &&
+			nodeText(this.text, node.children[0]) === '"@language"'
 		) {
 			const parent = node.parent!;
 			const valueProp = parent.children!.find(c =>
-			nodeText(this.text, c.children![0]) === '"@value"'
+				c?.type === 'property' &&
+				Array.isArray(c.children) &&
+				c.children.length >= 2 &&
+				nodeText(this.text, c.children[0]) === '"@value"'
 			);
-			if (valueProp) {
-				const val = valueProp.children![1];
+			if (
+				valueProp &&
+				Array.isArray(valueProp.children) &&
+				valueProp.children.length >= 2
+			) {
+				const val = valueProp.children[1];
 				if (val?.type !== 'string' && val?.type !== 'null') {
 					diags.push(Diagnostic.create(
 						nodeToRange(this.text, val),

@@ -1,6 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { splitTopLevel } from './split-top-level';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export function breakObjects(lines: string[], cfg: any): string[] {
   if (!cfg.breakObjects) {
     return lines;
