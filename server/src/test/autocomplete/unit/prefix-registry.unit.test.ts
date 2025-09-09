@@ -22,7 +22,7 @@ describe('PrefixRegistry (unit)', () => {
     const all = reg.getAll();
     expect(all.some(e => e.prefix==='ex' && e.iri==='http://ex/')).toBe(true);
 
-    const dc = await reg.ensure('dc' as any);
-    expect(dc).toBe('http://purl.org/dc/terms/');
+    const skos = await reg.ensure('skos' as any);
+    expect(skos).toBe('http://www.w3.org/2004/02/skos/core#');
   });
 });
