@@ -57,7 +57,6 @@ export class JsonLdEditBuilder {
     }
   }
 
-  /** Replace eligible KEYS/VALUES starting with `ns` to `prefix:`. */
   replaceNamespaceInEligiblePositions(ns: string, prefix: string, index: IriExpectationIndex, edits: TextEdit[]) {
 
     this.forEachProperty((keyNode, keyStr) => {
