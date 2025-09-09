@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RDFusion — VS Code Extension User Manual</title>
+
+  <style>
+    /* Color palette */
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      background: #ffffff;
+      color: #1f2937;
+      font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Noto Sans", Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+
+    a {
+      color: #0056b3;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    a:hover {
+      text-decoration-thickness: 2px;
+    }
+
+    /* Containers */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    .row {
+      display: grid;
+      gap: 16px;
+    }
+
+    /* Header */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(6px);
+      background: rgba(255, 255, 255, 0.85);
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+
+    .brand {
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      color: #0f172a;
+    }
+
+    nav ul {
+      display: flex;
+      gap: 14px;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    nav a {
+      font-weight: 600;
+      color: #0056b3;
+    }
+
+    .hero {
+      background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .hero .container {
+      padding: 48px 16px 24px;
+    }
+
+    .hero h1 {
+      font-size: clamp(28px, 3vw + 18px, 42px);
+      margin: 0 0 8px;
+      color: #0f172a;
+    }
+
+    .hero p {
+      color: #475569;
+      max-width: 70ch;
+      margin: 0;
+    }
+
+    .badges {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      border: 1px solid #e5e7eb;
+      color: #334155;
+      background: #f1f5f9;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .toc {
+        position: static;
+        top: auto;
+      }
+    }
+
+    .toc {
+      position: sticky;
+      top: 88px;
+      align-self: start;
+      max-height: calc(100dvh - 120px);
+      overflow: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      background: #f8fafc;
+    }
+
+    .toc h3 {
+      font-size: 13px;
+      margin: 12px 12px 4px;
+      letter-spacing: .3px;
+      text-transform: uppercase;
+      color: #334155;
+    }
+
+    .toc a {
+      display: block;
+      padding: 8px 12px;
+      border-left: 2px solid transparent;
+      color: #0f172a;
+      text-decoration: none;
+    }
+
+    .toc a:hover {
+      background: #f1f5f9;
+    }
+
+    .toc .sub {
+      padding-left: 16px;
+      font-size: 14px;
+      color: #334155;
+    }
+
+    section {
+      scroll-margin-top: 84px;
+    }
+
+    .card {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 18px;
+    }
+
+    .card h2,
+    .card h3,
+    .card h4 {
+      margin-top: 0;
+      color: #0f172a;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 900px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .media {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    .media .tabs {
+      display: flex;
+      gap: 6px;
+      padding: 8px;
+      border-bottom: 1px solid #e5e7eb;
+      background: #f8fafc;
+    }
+
+    .media .tabs button {
+      appearance: none;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      color: #0f172a;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .media .tabs button[aria-selected="true"] {
+      outline: 2px solid #a5b4fc;
+    }
+
+    .media .viewport {
+      aspect-ratio: 16/9;
+      display: grid;
+      place-items: center;
+      background: #f8fafc;
+    }
+
+    .media .viewport img {
+      max-width: 100%;
+      max-height: 100%;
+      display: block;
+      cursor: zoom-in;
+    }
+
+    .caption {
+      font-size: 13px;
+      color: #475569;
+      padding: 8px 10px;
+    }
+
+    .callout {
+      border-left: 3px solid #38bdf8;
+      background: #e0f2fe;
+      padding: 12px;
+      border-radius: 10px;
+      color: #0c4a6e;
+    }
+
+    .callout.warn {
+      border-left-color: #f59e0b;
+      background: #fff7ed;
+      color: #7c2d12;
+    }
+
+    .callout.ok {
+      border-left-color: #10b981;
+      background: #ecfdf5;
+      color: #064e3b;
+    }
+
+    pre,
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    pre {
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 12px;
+      overflow: auto;
+      position: relative;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: 12px;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      color: #0f172a;
+      border-radius: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+
+    footer {
+      border-top: 1px solid #e5e7eb;
+      margin-top: 40px;
+      padding: 24px 0 40px;
+      color: #475569;
+    }
+
+    .top {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      border-radius: 999px;
+      padding: 10px 12px;
+    }
+
+    dialog.lightbox {
+      width: min(96vw, 1280px);
+      padding: 0;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      color: #0f172a;
+      border-radius: 14px;
+    }
+
+    dialog.lightbox::backdrop {
+      background: rgba(0, 0, 0, .6);
+    }
+
+    .lb-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .lb-title {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .lb-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .lb-btn {
+      appearance: none;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      color: #0f172a;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .lb-body {
+      position: relative;
+    }
+
+    .lb-viewport {
+      display: grid;
+      place-items: center;
+      padding: 10px;
+      max-height: calc(90vh - 64px);
+      background: #f8fafc;
+    }
+
+    .lb-viewport img {
+      max-width: 100%;
+      max-height: calc(90vh - 80px);
+      display: block;
+    }
+
+    .lb-caption {
+      padding: 0 12px 12px;
+      color: #475569;
+      font-size: 13px;
+    }
+
+    .lb-controls {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: none;
+      padding: 0 8px;
+    }
+
+    .lb-controls .lb-arrow {
+      pointer-events: auto;
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="container header-inner">
+      <div class="brand">RDFusion · VS Code Extension</div>
+      <nav aria-label="Primary">
+        <ul>
+          <li><a href="#install">Install</a></li>
+          <li><a href="#settings">Settings</a></li>
+          <li><a href="#validation">Validation</a></li>
+          <li><a href="#autocomplete">Autocompletion</a></li>
+          <li><a href="#triples">Triple Management</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <div class="hero">
+    <div class="container">
+      <h1>RDFusion — User Manual</h1>
+      <p>How to install, configure, and use RDF editing in VS Code with real-time validation, autocompletion, prefix
+        refactoring, and triple-management. The demos are in <strong>GIFs</strong> — you can click on any of them to
+        enlarge.</p>
+      <div class="badges">
+        <span class="badge">Turtle (.ttl)</span>
+        <span class="badge">JSON-LD (.jsonld)</span>
+        <span class="badge">SHACL</span>
+        <span class="badge">VoID</span>
+      </div>
+    </div>
+  </div>
+
+  <main class="container" id="content">
+    <div class="layout" role="presentation">
+      <aside class="toc" aria-label="On this page">
+        <h3>Contents</h3>
+        <a href="#install">Installation & Activation</a>
+        <a class="sub" href="#install-marketplace">· Marketplace install</a>
+        <a class="sub" href="#install-vsix">· Install from VSIX</a>
+        <a class="sub" href="#install-activation">· Activation triggers</a>
+        <a class="sub" href="#install-reqs">· Requirements</a>
+        <a href="#quickstart">Quick start</a>
+        <a href="#settings">Configuration & Settings</a>
+        <a class="sub" href="#settings-general">· General</a>
+        <a class="sub" href="#settings-validation">· Validation</a>
+        <a class="sub" href="#settings-autocomplete">· Autocompletion</a>
+        <a class="sub" href="#settings-performance">· Performance</a>
+        <a class="sub" href="#settings-language">· File associations</a>
+        <a href="#validation">Real-time Validation</a>
+        <a class="sub" href="#validation-errors">· Live error highlighting</a>
+        <a class="sub" href="#validation-shacl">· SHACL constraints</a>
+        <a class="sub" href="#validation-toggle">· Toggle & performance</a>
+        <a class="sub" href="#validation-rules">· Configurable rules</a>
+        <a href="#autocomplete">Autocompletion & Prefixes</a>
+        <a class="sub" href="#ac-trigger">· Triggering suggestions</a>
+        <a class="sub" href="#ac-sources">· Local & remote sources</a>
+        <a class="sub" href="#ac-context">· Context‑aware (TTL/JSON‑LD)</a>
+        <a class="sub" href="#ac-insert">· Auto‑declare prefixes</a>
+        <a class="sub" href="#ac-refactor-curie">· Refactor JSON‑LD CURIEs</a>
+        <a class="sub" href="#ac-settings">· Settings</a>
+        <a href="#triples">Triple Management</a>
+        <a class="sub" href="#tri-filter">· Filter</a>
+        <a class="sub" href="#tri-sort-group">· Sort & group</a>
+        <a class="sub" href="#tri-format">· Format document</a>
+        <a class="sub" href="#tri-iri">· IRI shortening</a>
+        <a class="sub" href="#tri-merge">· Merge files</a>
+        <a class="sub" href="#tri-diff">· RDF diff</a>
+        <a class="sub" href="#tri-void">· Dataset statistics (VoID)</a>
+      </aside>
+
+      <div class="flow">
+        <!-- INSTALLATION -->
+        <section id="install" class="card" aria-labelledby="install-h2">
+          <h2 id="install-h2">Installation & Activation</h2>
+          <div class="grid-2">
+            <div>
+              <h3 id="install-marketplace">Marketplace install</h3>
+              <ol>
+                <li>Open VS Code → <strong>Extensions</strong> (Ctrl/Cmd + Shift + X).</li>
+                <li>Search for <strong>“RDFusion”</strong> and click <strong>Install</strong>.</li>
+              </ol>
+
+              <h3 id="install-vsix">Install from VSIX</h3>
+              <ol>
+                <li>Build or download <code>rdfusion-x.y.z.vsix</code>.</li>
+                <li>VS Code → Extensions → <strong>⋯</strong> menu → <strong>Install from VSIX…</strong> → choose the
+                  file.</li>
+              </ol>
+
+              <h3 id="install-activation">Activation triggers</h3>
+              <p>The extension activates automatically when you open a <code>.ttl</code> (Turtle) or
+                <code>.jsonld</code> (JSON-LD) file. </p>
+
+              <h3 id="install-reqs">Requirements & Internationalization</h3>
+              <ul>
+                <li>Works on VS Code. Internet is recommended for things such as remote vocabulary lookups (LOV, prefix
+                  registries).</li>
+                <li>UI is English-only in this version.</li>
+              </ul>
+            </div>
+            <div>
+              <div class="media" data-gallery="install">
+                <div class="tabs" role="tablist">
+                  <button role="tab" aria-selected="true" data-tab="gif1">GIF 1</button>
+                </div>
+                <div class="viewport">
+                  <img loading="lazy" data-tabpanel="gif1" alt="Install from Marketplace / VSIX"
+                    src="images/install.gif" />
+                </div>
+                <div class="caption">Click the GIF to open a larger view. Use Esc to close.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- QUICK START -->
+        <section id="quickstart" class="card" aria-labelledby="qs-h2">
+          <h2 id="qs-h2">Quick start</h2>
+          <ol>
+            <li>Create or open a <code>.ttl</code> or <code>.jsonld</code> file.</li>
+            <li>Type a known prefix (e.g., <code>foaf:</code>) or start authoring a triple. Autocomplete and validation
+              appear as you type.</li>
+            <li>Press <kbd>Ctrl/Cmd</kbd> + <kbd>Space</kbd> to force suggestions at any time, in case not triggered
+              when it should.</li>
+            <li>Open the Command Palette (<kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd>) and run
+              <em>RDFusion</em> commands like <strong>Filter Triples</strong> or <strong>Generate VoID</strong>.</li>
+          </ol>
+        </section>
+
+        <!-- SETTINGS -->
+        <section id="settings" class="card" aria-labelledby="st-h2">
+          <h2 id="st-h2">Configuration & Settings</h2>
+          <p>RDFusion exposes settings in <strong>File → Preferences → Settings</strong> (search for “RDFusion”) or via
+            <strong>settings.json</strong>. These configurations are also available through the Command Palette.</p>
+
+          <article id="settings-validation">
+            <h3>Validation</h3>
+            <ul>
+              <li><strong>Real-time Validation</strong>: on/off for live diagnostics; use the command palette for a
+                quick toggle or through Settings.</li>
+              <li><strong>SHACL</strong>: enable/disable applying SHACL shapes from your workspace.</li>
+              <li><strong>Language Tags, xsd-Datatype, Duplicate, IRI Schemes, and Other validations.</li>
+            </ul>
+          </article>
+
+          <article id="settings-autocomplete">
+            <h3>Autocompletion</h3>
+            <ul>
+              <li><strong>Auto-declare prefixes</strong>: when using an undeclared prefix, add the declaration
+                automatically.</li>
+              <li><strong>Suggestion Sources</strong>: choose local only, remote only, or both; either through the
+                Command Palette or Settings.</li>
+              <li><strong>Trigger Behavior</strong>: control whether suggestions appear automatically or only on
+                <kbd>Ctrl/Cmd</kbd> + <kbd>Space</kbd>.</li>
+            </ul>
+          </article>
+
+          <article id="settings-performance">
+            <h3>Performance</h3>
+            <ul>
+              <li><strong>Validation Throttling</strong>: only enable validations needed to keep responsive in large
+                files. e.g. SHACL </li>
+            </ul>
+          </article>
+        </section>
+
+        <!-- VALIDATION -->
+        <section id="validation" class="card" aria-labelledby="val-h2">
+          <h2 id="val-h2">Real-time Validation</h2>
+          <p>As you edit, the extension checks syntax, data consistency, and SHACL constraints and shows inline
+            diagnostics.</p>
+
+          <div class="grid-2">
+            <div>
+              <h3 id="validation-errors">Live error highlighting</h3>
+              <p>Syntax errors and warnings are underlined as you type, with details shown inline.</p>
+
+              <h3 id="validation-shacl">SHACL constraints</h3>
+              <p>If your workspace contains SHACL shapes (or one is configured), they are applied automatically if
+                enabled.</p>
+
+              <h3 id="validation-toggle">Toggle & performance</h3>
+              <p>Use Command-Palette or Settings to enable/disable checks. Basic parsing errors are prioritized; deeper
+                checks run when syntax is corrected.</p>
+
+              <h3 id="validation-rules">Configurable rules</h3>
+              <p>See <a href="#settings-validation">Configuration & Settings → Validation</a> to enable/disable
+                validations.</p>
+            </div>
+            <div>
+              <div class="media" data-gallery="validation">
+                <div class="tabs" role="tablist">
+                  <button role="tab" aria-selected="true" data-tab="gif1">GIF 1</button>
+                  <button role="tab" aria-selected="false" data-tab="gif2">GIF 2</button>
+                </div>
+                <div class="viewport">
+                  <img loading="lazy" data-tabpanel="gif1" alt="Validation — errors" src="images/validation-1.gif" />
+                  <img loading="lazy" data-tabpanel="gif2" alt="Validation — SHACL violations"
+                    src="images/validation-2.gif" hidden />
+                </div>
+                <div class="caption">Click a GIF to open a larger view. Use ← / → to switch when open.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- AUTOCOMPLETE / PREFIX MGMT -->
+        <section id="autocomplete" class="card" aria-labelledby="ac-h2">
+          <h2 id="ac-h2">Autocompletion & Prefix Management</h2>
+          <div class="grid-2">
+            <div>
+              <h3 id="ac-trigger">Triggering suggestions</h3>
+              <ul>
+                <li>Suggestions appear automatically in context; press <kbd>Ctrl/Cmd</kbd> + <kbd>Space</kbd> anytime.
+                </li>
+                <li>In Turtle, typing <code>prefix:</code> (e.g., <code>foaf:</code>) shows terms.</li>
+                <li>In JSON-LD, editing <code>@context</code> or a compact IRI shows terms and ensures prefixes are
+                  declared.</li>
+              </ul>
+
+              <h3 id="ac-sources">Local & remote sources</h3>
+              <p>Terms come from your open files and (optionally) remote vocabularies (e.g., FOAF via prefix registries
+                / LOV). Remote results are cached.</p>
+
+              <h3 id="ac-context">(TTL/JSON-LD)</h3>
+              <p>Provides based on whether you are inside a triple, a prefix declaration, a JSON-LD context, etc., and
+                tailor suggestions accordingly.</p>
+
+              <h3 id="ac-insert">Automatic prefix insertion</h3>
+              <p>Accepting a completion for an undeclared prefix auto-adds <code>@prefix</code> (Turtle) or a context
+                entry (JSON-LD) at the top of your file in a single undoable edit.</p>
+
+              <h3 id="ac-refactor-curie">Refactor JSON-LD CURIEs</h3>
+              <p><em>compact IRIs</em> in your JSON-LD file. The refactor updates <code>@context</code> and rewrites all
+                matching in the document. </p>
+
+              <h3 id="ac-settings">Configurable behavior</h3>
+              <p>Disable remote lookups when offline, and turn auto-declare/refactor options on/off in Settings based on
+                your flow.</p>
+            </div>
+            <div>
+              <div class="media" data-gallery="autocomplete">
+                <div class="tabs" role="tablist">
+                  <button role="tab" aria-selected="true" data-tab="gif1">GIF 1 (TTL)</button>
+                  <button role="tab" aria-selected="false" data-tab="gif2">GIF 2 (JSON-LD)</button>
+                  <button role="tab" aria-selected="false" data-tab="gif3">GIF 3 (IRI compaction)</button>
+                </div>
+                <div class="viewport">
+                  <img loading="lazy" data-tabpanel="gif1" alt="Autocomplete in Turtle with auto-declare"
+                    src="images/autocomplete-ttl.gif" />
+                  <img loading="lazy" data-tabpanel="gif2" alt="Autocomplete in JSON-LD @context"
+                    src="images/autocomplete-jsonld.gif" hidden />
+                  <img loading="lazy" data-tabpanel="gif3" alt="Refactoring JSON-LD IRI compaction across a file"
+                    src="images/refactor-curie.gif" hidden />
+                </div>
+                <div class="caption">Three flows: Turtle completion, JSON-LD completion, and JSON-LD IRI compaction.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <details class="callout" style="margin-top:12px;">
+            <summary><strong>Example snippets</strong> (copyable)</summary>
+            <div class="grid-2" style="margin-top:8px;">
+              <div>
+                <h4>Turtle</h4>
+                <pre><button class="copy-btn" data-copy>Copy</button><code>@prefix ex: <http://example.org/> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+
+ex:Homer a foaf:Person ;
+  foaf:name "Homer Simpson" ;
+  foaf:age 39 .
+</code></pre>
+              </div>
+              <div>
+                <h4>JSON-LD</h4>
+                <pre><button class="copy-btn" data-copy>Copy</button><code>{
+  "@context": {
+    "ex": "http://example.org/",
+    "foaf": "http://xmlns.com/foaf/0.1/"
+  },
+  "@id": "ex:Homer",
+  "@type": "foaf:Person",
+  "foaf:name": "Homer Simpson",
+  "foaf:age": 39
+}
+</code></pre>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <!-- TRIPLE MANAGEMENT -->
+        <section id="triples" class="card" aria-labelledby="tri-h2">
+          <h2 id="tri-h2">Triple Management Tools</h2>
+
+          <article id="tri-filter">
+            <h3>Filter triples (by subject / predicate / object)</h3>
+            <p>Use Command Palette → <em>RDFusion: Filter Triples by …</em> to generate a new tab view containing only
+              matching triples. Useful for focusing on one resource (e.g., <code>ex:Homer</code>).</p>
+            <div class="media" data-gallery="filter">
+              <div class="tabs" role="tablist">
+                <button role="tab" aria-selected="true" data-tab="gif1">GIF 1</button>
+              </div>
+              <div class="viewport">
+                <img loading="lazy" data-tabpanel="gif1" alt="Filtering triples" src="images/triples-filter.gif" />
+              </div>
+              <div class="caption">Click to view larger. Non-destructive: your original file is untouched.</div>
+            </div>
+          </article>
+
+          <article id="tri-sort-group">
+            <h3>Sort & group</h3>
+            <p><em>Group by Subject</em> groups triples under their subject; <em>Sort Triples</em> orders triples for
+              cleaner diffs and review.</p>
+            <div class="media" data-gallery="group">
+              <div class="tabs" role="tablist">
+                <button role="tab" aria-selected="true" data-tab="gif1">GIF 1</button>
+              </div>
+              <div class="viewport">
+                <img loading="lazy" data-tabpanel="gif1" alt="Grouping triples by subject"
+                  src="images/triples-group.gif" />
+              </div>
+            </div>
+          </article>
+
+          <article id="tri-format">
+            <h3>Format Turtle document</h3>
+            <p>Use <em>RDFusion: Format Document</em> to apply consistent indentation, prefix-mapping, block wrapping,
+              and so on.</p>
+            <div class="media" data-gallery="format">
+              <div class="tabs" role="tablist">
+                <button role="tab" aria-selected="true" data-tab="gif11">GIF 1</button>
+              </div>
+              <div class="viewport">
+                <img loading="lazy" data-tabpanel="gif11" alt="Formatting turtle triples"
+                  src="images/triples-format.gif" />
+              </div>
+            </div>
+          </article>
+
+          <article id="tri-iri">
+            <h3>IRI shortening (compact view)</h3>
+            <p>Toggle visual shortening for long IRIs (e.g., <code>http://example.org/.../Concept</code>). This improves
+              readability without changing file content.</p>
+            <div class="media" data-gallery="iri">
+              <div class="tabs" role="tablist">
+                <button role="tab" aria-selected="true" data-tab="gif1">GIF 1</button>
+              </div>
+              <div class="viewport">
+                <img loading="lazy" data-tabpanel="gif1" alt="IRI shortening demo" src="images/iri-shortening.gif" />
+              </div>
+            </div>
+          </article>
+
+          <article id="tri-merge">
+            <h3>Merge files</h3>
+            <p>Select multiple RDF files and run <em>RDFusion: Merge Files</em>. The result is a single grouped Turtle
+              document opened in a new tab.</p>
+            <div class="media" data-gallery="merge">
+              <div class="tabs" role="tablist">
+                <button role="tab" aria-selected="true" data-tab="gif1">GIF 1</button>
+              </div>
+              <div class="viewport">
+                <img loading="lazy" data-tabpanel="gif1" alt="Merging multiple RDF files" src="images/merge.gif" />
+              </div>
+            </div>
+          </article>
+
+          <article id="tri-diff">
+            <h3>Turtle RDF diff</h3>
+            <p>Compare current open turtle file with the HEAD, or specific commit in Git. The diff view compares the
+              current working, either with the HEAD git or the referenced commit.</p>
+            <div class="callout" style="margin:12px 0;">
+              <strong>Note:</strong> When blank nodes are present it shows RDF differences (support will be added soon).
+            </div>
+            <div class="media" data-gallery="rdf-diff">
+              <div class="tabs" role="tablist">
+                <button role="tab" aria-selected="true" data-tab="gif1">GIF 1</button>
+              </div>
+              <div class="viewport">
+                <img loading="lazy" data-tabpanel="gif1" alt="RDF diff showing added and removed triples"
+                  src="images/rdf-diff.gif" />
+              </div>
+            </div>
+          </article>
+
+          <article id="tri-void">
+            <h3>Dataset statistics (VoID)</h3>
+            <p>Run <em>RDFusion: Generate VoID Description</em> to compute counts (triples, distinct subjects/objects,
+              classes) and output a VoID Turtle in a new tab.</p>
+            <details class="callout" style="margin-top:12px;">
+              <summary><strong>Example VoID snippet</strong></summary>
+              <pre><button class="copy-btn" data-copy>Copy</button><code><> a void:Dataset ;
+				void:triples 123 ;
+				void:distinctSubjects 45 ;
+				void:distinctObjects 50 ;
+				void:classes 10 ;
+				void:classesPartition [ void:class ex:Person ; void:entities 5 ] .
+				</code></pre>
+            </details>
+            <div class="media" data-gallery="void">
+              <div class="tabs" role="tablist">
+                <button role="tab" aria-selected="true" data-tab="gif1">GIF 1</button>
+              </div>
+              <div class="viewport">
+                <img loading="lazy" data-tabpanel="gif1" alt="Generating VoID statistics" src="images/void.gif" />
+              </div>
+            </div>
+          </article>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <dialog class="lightbox" id="lightbox" aria-labelledby="lightbox-title" aria-modal="true">
+    <div class="lb-header">
+      <h2 class="lb-title" id="lightbox-title">Image preview</h2>
+      <div class="lb-actions">
+        <button type="button" class="lb-btn" id="lb-prev" aria-label="Previous GIF" hidden>←</button>
+        <button type="button" class="lb-btn" id="lb-next" aria-label="Next GIF" hidden>→</button>
+        <button type="button" class="lb-btn" id="lb-close" aria-label="Close">✕</button>
+      </div>
+    </div>
+    <div class="lb-body">
+      <div class="lb-viewport">
+        <img id="lb-img" alt="" />
+      </div>
+      <div class="lb-controls">
+        <button type="button" class="lb-btn lb-arrow" id="lb-prev2" aria-label="Previous GIF" hidden>←</button>
+        <button type="button" class="lb-btn lb-arrow" id="lb-next2" aria-label="Next GIF" hidden>→</button>
+      </div>
+      <p class="lb-caption" id="lb-caption"></p>
+    </div>
+  </dialog>
+
+  <footer class="container">
+    <p>RDFusion — VS Code Extension · User Manual</p>
+    <p class="muted">Click any GIF to enlarge. Use Esc to close and ←/→ to navigate when available.</p>
+  </footer>
+
+  <a class="top" href="#content" aria-label="Back to top">↑</a>
+
+  <script>
+    document.querySelectorAll('.media').forEach((gallery) => {
+      const tabsWrap = gallery.querySelector('.tabs');
+      const tabs = gallery.querySelectorAll('[role="tab"]');
+      const panels = gallery.querySelectorAll('[data-tabpanel]');
+
+      if (tabs.length <= 1) {
+        if (tabsWrap) tabsWrap.style.display = 'none';
+        panels.forEach((p, i) => p.hidden = i === 0 ? false : true);
+      } else {
+        tabs.forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-tab');
+            tabs.forEach(b => b.setAttribute('aria-selected', b === btn ? 'true' : 'false'));
+            panels.forEach(p => p.hidden = p.getAttribute('data-tabpanel') !== id);
+          });
+        });
+      }
+    });
+
+    document.querySelectorAll('[data-copy]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const pre = btn.closest('pre');
+        const code = pre.querySelector('code').innerText;
+        navigator.clipboard.writeText(code).then(() => {
+          btn.textContent = 'Copied!';
+          setTimeout(() => (btn.textContent = 'Copy'), 1200);
+        });
+      });
+    });
+
+    const lightbox = document.getElementById('lightbox');
+    const lbImg = document.getElementById('lb-img');
+    const lbCaption = document.getElementById('lb-caption');
+    const lbClose = document.getElementById('lb-close');
+    const lbPrev = document.getElementById('lb-prev');
+    const lbNext = document.getElementById('lb-next');
+    const lbPrev2 = document.getElementById('lb-prev2');
+    const lbNext2 = document.getElementById('lb-next2');
+
+    let lbState = { images: [], index: 0, lastFocus: null };
+
+    function updateLightboxButtons() {
+      const multi = lbState.images.length > 1;
+      [lbPrev, lbNext, lbPrev2, lbNext2].forEach(btn => btn.hidden = !multi);
+    }
+
+    function showAt(index) {
+      lbState.index = (index + lbState.images.length) % lbState.images.length;
+      const item = lbState.images[lbState.index];
+      lbImg.src = item.src;
+      lbImg.alt = item.alt || '';
+      lbCaption.textContent = item.alt || '';
+    }
+
+    function openLightboxFrom(gallery, clickedImg) {
+      const imgs = Array.from(gallery.querySelectorAll('.viewport img'));
+      lbState.images = imgs.map(img => ({ src: img.getAttribute('src'), alt: img.getAttribute('alt') }));
+      const visibleIndex = imgs.findIndex(img => img.hidden !== true);
+      const clickedIndex = imgs.indexOf(clickedImg);
+      const startIndex = clickedIndex !== -1 ? clickedIndex : Math.max(0, visibleIndex);
+      showAt(startIndex);
+      updateLightboxButtons();
+
+      lbState.lastFocus = document.activeElement;
+      lightbox.showModal();
+      lbClose.focus();
+    }
+
+    function closeLightbox() {
+      lightbox.close();
+      if (lbState.lastFocus && typeof lbState.lastFocus.focus === 'function') {
+        lbState.lastFocus.focus();
+      }
+    }
+
+    function prev() { showAt(lbState.index - 1); }
+    function next() { showAt(lbState.index + 1); }
+
+    lbClose.addEventListener('click', closeLightbox);
+    lbPrev.addEventListener('click', prev);
+    lbNext.addEventListener('click', next);
+    lbPrev2.addEventListener('click', prev);
+    lbNext2.addEventListener('click', next);
+
+    lightbox.addEventListener('click', (e) => {
+      const rect = lightbox.getBoundingClientRect();
+      const clickedInDialog = (
+        e.clientX >= rect.left && e.clientX <= rect.right &&
+        e.clientY >= rect.top && e.clientY <= rect.bottom
+      );
+      if (!clickedInDialog) closeLightbox();
+    });
+
+    lightbox.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); next(); }
+    });
+
+    document.addEventListener('click', (e) => {
+      const img = e.target.closest('.media .viewport img');
+      if (!img) return;
+      const gallery = img.closest('.media');
+      openLightboxFrom(gallery, img);
+    });
+  </script>
+</body>
+
+</html>

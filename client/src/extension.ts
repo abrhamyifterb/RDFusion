@@ -94,7 +94,7 @@ const trace = vscode.window.createOutputChannel('RDFusion LSP Trace');
 		serverOptions,
 		  {
 			...clientOptions,
-			traceOutputChannel: trace,   // <— add this
+			traceOutputChannel: trace,  
 		}
 	);
 
