@@ -654,7 +654,7 @@
           <section id="validation" class="card" aria-labelledby="val-h2">
             <h2 id="val-h2">Real-time Validation</h2>
             <p>
-              As you edit, the extension checks syntax, data consistency, and
+              As you edit, the extension checks syntax, other restrictions enabled, and
               SHACL constraints and shows inline diagnostics.
             </p>
 
@@ -668,8 +668,7 @@
 
                 <h3 id="validation-shacl">SHACL constraints</h3>
                 <p>
-                  If your workspace contains SHACL shapes (or one is
-                  configured), they are applied automatically if enabled.
+                  If your workspace contains SHACL shapes, they are applied automatically if enabled.
                 </p>
 
                 <h3 id="validation-toggle">Toggle & performance</h3>
@@ -899,7 +898,7 @@ ex:Homer a foaf:Person ;
 
           <!-- TRIPLE MANAGEMENT -->
           <section id="triples" class="card" aria-labelledby="tri-h2">
-            <h2 id="tri-h2">Triple Management Tools</h2>
+            <h2 id="tri-h2">Triple Management</h2>
 
             <article id="tri-filter">
               <h3>Filter triples (by subject / predicate / object)</h3>
@@ -931,8 +930,7 @@ ex:Homer a foaf:Person ;
               <h3>Sort & group</h3>
               <p>
                 <em>Group by Subject</em> groups triples under their subject;
-                <em>Sort Triples</em> orders triples for cleaner diffs and
-                review.
+                <em>Sort Triples</em> orders triples for cleaner look.
               </p>
               <div class="media" data-gallery="group">
                 <div class="tabs" role="tablist" aria-label="Grouping demos">
@@ -1026,7 +1024,7 @@ ex:Homer a foaf:Person ;
               </p>
               <div class="callout" style="margin: 12px 0">
                 <strong>Note:</strong> When blank nodes are present the diff
-                shows RDF differences (structural support will be added soon).
+                shows RDF differences (support will be added soon).
               </div>
               <div class="media" data-gallery="rdf-diff">
                 <div class="tabs" role="tablist" aria-label="RDF diff demos">
@@ -1043,6 +1041,26 @@ ex:Homer a foaf:Person ;
                 </div>
               </div>
             </article>
+            
+            <article id="tri-void">
+            <h3>Dataset statistics (VoID)</h3>
+            <p>Run <em>RDFusion: Generate VoID Description</em> to compute counts (triples, distinct subjects/objects, classes) and output a VoID Turtle in a new tab.</p>
+              <div class="media" data-gallery="void">
+                <div class="tabs" role="tablist" aria-label="VoID demos">
+                  <button role="tab" aria-selected="true" data-tab="gif1">
+                    GIF 1
+                  </button>
+                </div>
+                <div class="viewport">
+                  <img
+                    data-tabpanel="gif1"
+                    alt="Generating VoID statistics" 
+                    src="images/void.gif"
+                  />
+                </div>
+              </div>
+          </article>
+
           </section>
         </div>
       </div>
