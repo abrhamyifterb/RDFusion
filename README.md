@@ -1,6 +1,11 @@
 # RDFusion
 
-RDFusion brings RDF editing and validation directly into VS Code. Whether you’re working with Turtle or JSON-LD 1.1, RDFusion:
+RDFusion brings RDF editing and validation directly into VS Code. 
+## 🌐 Live site
+
+[![Visit site](https://img.shields.io/badge/Website-GitHub%20Pages-0969DA?logo=github&logoColor=white)](https://abrhamyifterb.github.io/RDFusion/)
+
+Whether you’re working with Turtle or JSON-LD 1.1, RDFusion:
 
 - Highlights **inline syntax errors** as you type  
 - Runs and highlights **SHACL shape validation** against your data model as you type 
