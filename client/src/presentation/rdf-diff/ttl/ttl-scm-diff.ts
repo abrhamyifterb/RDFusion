@@ -3,38 +3,34 @@ import { LanguageClient } from 'vscode-languageclient/node';
 
 async function getSemanticDelta(
   client: LanguageClient,
-  leftNQ: string,
-  rightNQ: string
+	leftTurtle: string,
+	rightTurtle: string,
+	baseIRI: string
 ): Promise<{ adds: number; dels: number }> {
-  const pair = await client.sendRequest<{ left: string; right: string }>('rdf/canonPair', {
-    left: leftNQ,
-    right: rightNQ,
-    canonicalizeBNodes: true,
-    alignRightToLeft: true
-  });
-  const { adds, dels } = await client.sendRequest<{ adds: string[]; dels: string[] }>('rdf/diffCanonical', pair);
-  return { adds: adds.length, dels: dels.length };
+	const { adds, dels } = await client.sendRequest<{ adds: string[]; dels: string[] }>('rdf/diffIsomorphic', {
+		leftTurtle,
+		rightTurtle,
+		baseIRI
+	});
+	return { adds: adds.length, dels: dels.length };
 }
 
 
 
-async function ttlToNQ(client: LanguageClient, ttl: string, base: string): Promise<string | null> {
-	const nq = await client.sendRequest<string | null>('rdf/ttlToNQuads', { text: ttl, base });
-	return nq && nq.trim() ? nq : null;
-}
-async function getWorkingNQ(client: LanguageClient, uri: vscode.Uri): Promise<string | null> {
+async function getWorkingTurtle(uri: vscode.Uri): Promise<string | null> {
 	const doc = await vscode.workspace.openTextDocument(uri);
-	return ttlToNQ(client, doc.getText(), uri.toString());
+	const ttl = doc.getText();
+	return ttl && ttl.trim() ? ttl : null;
 }
-async function getHeadNQ(client: LanguageClient, uri: vscode.Uri): Promise<string | null> {
+async function getHeadTurtle(uri: vscode.Uri): Promise<string | null> {
 	const git = vscode.extensions.getExtension('vscode.git')?.exports?.getAPI(1);
 	if (!git) {return null;}
 	const repo = git.repositories.find(r => uri.fsPath.startsWith(r.rootUri.fsPath));
 	if (!repo) {return null;}
 	const rel = uri.fsPath.substring(repo.rootUri.fsPath.length + 1).replace(/\\/g, '/');
 	const ttl = await repo.show('HEAD', rel).catch(() => undefined);
-	if (!ttl) {return null;}
-	return ttlToNQ(client, ttl, uri.toString());
+	if (!ttl || !ttl.trim()) {return null;}
+	return ttl;
 }
 
 export class RdfFileDecorationProvider implements vscode.FileDecorationProvider {
@@ -103,19 +99,19 @@ export class RdfScm {
 				return;
 			}
 
-			const [leftNQ, rightNQ] = await Promise.all([
-				getHeadNQ(this.client, uri),
-				getWorkingNQ(this.client, uri)
+			const [leftTTL, rightTTL] = await Promise.all([
+				getHeadTurtle(uri),
+				getWorkingTurtle(uri)
 			]);
 
-			if (!leftNQ || !rightNQ) {
+			if (!leftTTL || !rightTTL) {
 				this.group.resourceStates = [];
 				this.scm.count = 0;
 				this.deco.clear(uri);
 				return;
 			}
 
-			const delta = await getSemanticDelta(this.client, leftNQ, rightNQ);
+			const delta = await getSemanticDelta(this.client, leftTTL, rightTTL, uri.toString());
 			this.scm.count = delta.adds + delta.dels;
 			this.deco.update(uri, delta);
 

@@ -35,9 +35,10 @@ import { FileItem } from './presentation/activity-bar/file-item';
 import { defaultTurtleFormatConfig, turtleFormattingLabels } from './default-config/turtle-formatting-config';
 import { defaultIriSchemeConfig, IriSchemeConfigLabels } from './default-config/Iri-scheme-config';
 import { StatusBarManager } from './presentation/status-bar/status-bar';
-import { registerRdfDiffCommands } from './presentation/rdf-diff/ttl/ttl-diff-commands';
+
 import { RdfScm } from './presentation/rdf-diff/ttl/ttl-scm-diff';
 import { registerJsonLdBridge } from './presentation/refactor/refactor-jsonld-prefix';
+import { registerRdfDiffCommands } from './presentation/rdf-diff/ttl/ttl-diff-commands';
 
 let client: LanguageClient;
 
@@ -375,6 +376,38 @@ const trace = vscode.window.createOutputChannel('RDFusion LSP Trace');
 		} catch (err) {
 			vscode.window.showErrorMessage(String(err));
 		}
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('rdfusion.encodeTurtleUnicodeEscapes', async () => {
+			const editor = vscode.window.activeTextEditor;
+			if (!editor) {
+				vscode.window.showErrorMessage('Open an RDF document first.');
+				return;
+			}
+			const uri = editor.document.uri.toString();
+			const mode = "encode";
+			await client.sendRequest('workspace/executeCommand', {
+				command: 'rdf.turtleUnicodeEscapeTransform',
+				arguments: [{ uri, mode }]
+			});
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('rdfusion.decodeTurtleUnicodeEscapes', async () => {
+			const editor = vscode.window.activeTextEditor;
+			if (!editor) {
+				vscode.window.showErrorMessage('Open an RDF document first.');
+				return;
+			}
+			const uri = editor.document.uri.toString();
+			const mode = "decode";
+			await client.sendRequest('workspace/executeCommand', {
+				command: 'rdf.turtleUnicodeEscapeTransform',
+				arguments: [{ uri, mode }]
+			});
 		})
 	);
 
@@ -886,7 +919,7 @@ const trace = vscode.window.createOutputChannel('RDFusion LSP Trace');
 			}
 		})
 	);
-
+	
 	registerRdfDiffCommands(context, client);
 	const scm = new RdfScm(context, client);
 	context.subscriptions.push(scm);

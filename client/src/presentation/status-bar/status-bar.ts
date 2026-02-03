@@ -19,7 +19,7 @@ export class StatusBarManager {
 		this.item.text = '$(code) Format TTL';
 		this.item.tooltip = 'Format Turtle with RDFusion';
 
-		this.diffHeadItem.command = 'rdfdiff.compareWithHEAD';
+		this.diffHeadItem.command = 'rdfusion.compareWithHEAD';
 		this.diffHeadItem.text = '$(git-compare) RDF Diff';
 		this.diffHeadItem.tooltip = 'RDF Diff: Compare current file with HEAD';
 

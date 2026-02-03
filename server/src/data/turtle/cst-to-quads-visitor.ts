@@ -5,7 +5,7 @@ const { namedNode, blankNode, literal, quad, defaultGraph } = DataFactory;
 function normalizeDatatype(dt: string): string {
   const xsdNs = "http://www.w3.org/2001/XMLSchema#";
   if (dt.toLowerCase().startsWith(xsdNs.toLowerCase())) {
-    return xsdNs + dt.slice(xsdNs.length).toLowerCase();
+    return xsdNs + dt.slice(xsdNs.length);
   }
   return dt;
 }

@@ -1,115 +1,165 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as vscode from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/node';
 import { RdfCanonProvider } from './rdf-canon-provider';
 import { getGitAPI, readAt } from './git-utils';
 
-async function getWorkingNQuadsUnified(client: LanguageClient, uri: vscode.Uri): Promise<string | null> {
-  const doc = await vscode.workspace.openTextDocument(uri);
-  const text = doc.getText();
-  const nq = await client.sendRequest<string | null>('rdf/ttlToNQuads', { text, base: uri.toString() });
-  return nq && nq.trim() ? nq : null;
+interface IsoPairResult {
+	leftAligned: string;
+	rightAligned: string;
+	isIsomorphic: boolean;
+	method?: 'CANON' | 'URDNA' | 'SORT' | 'BACKTRACK';
 }
 
-async function getRefNQuads(client: LanguageClient, uri: vscode.Uri, ref: string): Promise<string | null> {
-  const api = getGitAPI();
-  if (!api) {return null;}
-  const ttl = await readAt(api, uri, ref);
-  if (ttl == null || !ttl.trim()) {return null;}
-  const nq = await client.sendRequest<string | null>('rdf/ttlToNQuads', { text: ttl, base: uri.toString() });
-  return nq && nq.trim() ? nq : null;
+function extractUri(arg: unknown): vscode.Uri | null {
+	if (!arg) {return null;}
+	if (arg instanceof vscode.Uri) {return arg;}
+	const a: any = arg as any;
+	if (a?.resourceUri instanceof vscode.Uri) {return a.resourceUri;}
+	if (a?.resourceUri && typeof a.resourceUri?.path === 'string') {
+		try { return vscode.Uri.from(a.resourceUri); } catch { /* ignore */ }
+	}
+	return null;
 }
 
-async function canonPair(
-  client: LanguageClient,
-  leftNQ: string,
-  rightNQ: string
-): Promise<{ left: string; right: string }> {
-  const canonBNodes = vscode.workspace.getConfiguration('rdfDiff').get<boolean>('canonicalizeBNodes', true);
-  return client.sendRequest<{ left: string; right: string }>('rdf/canonPair', {
-    left: leftNQ,
-    right: rightNQ,
-    canonicalizeBNodes: canonBNodes,
-    alignRightToLeft: false
-  });
+async function getWorkingTurtle(uri: vscode.Uri): Promise<string | null> {
+	const doc = await vscode.workspace.openTextDocument(uri);
+	const ttl = doc.getText();
+	return ttl && ttl.trim() ? ttl : null;
 }
 
-function makeRdfUri(base: vscode.Uri, side: 'left'|'right', tag: string) {
-  return vscode.Uri.from({
-    scheme: RdfCanonProvider.scheme,
-    path: base.path,
-    query: `side=${side}&tag=${encodeURIComponent(tag)}&t=${Date.now()}`
-  });
+async function getRefTurtle(uri: vscode.Uri, ref: string): Promise<string | null> {
+	const api = getGitAPI();
+	if (!api) {return null;}
+	const ttl = await readAt(api, uri, ref);
+	return ttl && ttl.trim() ? ttl : null;
+}
+
+async function isomorphicPair(
+	client: LanguageClient,
+	leftTurtle: string,
+	rightTurtle: string,
+	baseIRI: string
+): Promise<IsoPairResult> {
+	return client.sendRequest<IsoPairResult>('rdf/isomorphicPair', {
+		leftTurtle,
+		rightTurtle,
+		baseIRI
+	});
+}
+
+function makeRdfUri(base: vscode.Uri, side: 'left' | 'right', tag: string) {
+	return vscode.Uri.from({
+		scheme: RdfCanonProvider.scheme,
+		path: base.path,
+		query: `side=${side}&tag=${encodeURIComponent(tag)}&t=${Date.now()}`
+	});
 }
 
 export function registerRdfDiffCommands(context: vscode.ExtensionContext, client: LanguageClient) {
-  const provider = new RdfCanonProvider();
-  context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider(RdfCanonProvider.scheme, provider));
+	const provider = new RdfCanonProvider();
+	context.subscriptions.push(
+		vscode.workspace.registerTextDocumentContentProvider(RdfCanonProvider.scheme, provider)
+	);
 
-  const ensureTurtle = (ed?: vscode.TextEditor) => {
-    const e = ed ?? vscode.window.activeTextEditor;
-    if (!e) { vscode.window.showInformationMessage('Open a Turtle file.'); return null; }
-    if (!e.document.fileName.toLowerCase().endsWith('.ttl')) {
-      vscode.window.showWarningMessage('RDF Diff commands work on .ttl files.');
-      return null;
-    }
-    return e;
-  };
+	async function ensureTurtleUri(arg?: unknown): Promise<vscode.Uri | null> {
+		const u = extractUri(arg) ?? vscode.window.activeTextEditor?.document.uri;
+		if (!u) {
+			vscode.window.showInformationMessage('Open a Turtle file.');
+			return null;
+		}
+		if (!u.fsPath.toLowerCase().endsWith('.ttl')) {
+			vscode.window.showWarningMessage('RDF Diff commands work on .ttl files.');
+			return null;
+		}
+		return u;
+	}
 
-  context.subscriptions.push(vscode.commands.registerCommand('rdfdiff.compareWithHEAD', async () => {
-    const ed = ensureTurtle(); if (!ed) return;
-    const uri = ed.document.uri;
+	context.subscriptions.push(
+		vscode.commands.registerCommand('rdfusion.compareWithHEAD', async (arg?: unknown) => {
+			const uri = await ensureTurtleUri(arg);
+			if (!uri) {return;}
 
-    const [leftNQ, rightNQ] = await Promise.all([
-      getRefNQuads(client, uri, 'HEAD'),
-      getWorkingNQuadsUnified(client, uri) 
-    ]);
+			const [headTTL, workTTL] = await Promise.all([
+				getRefTurtle(uri, 'HEAD'),
+				getWorkingTurtle(uri)
+			]);
 
-    if (!leftNQ && !rightNQ) { vscode.window.showWarningMessage('RDF Diff: neither HEAD nor Working are loaded.'); return; }
-    if (!leftNQ) { vscode.window.showWarningMessage('RDF Diff: could not load HEAD.'); return; }
-    if (!rightNQ) { vscode.window.showWarningMessage('RDF Diff: could not load Working.'); return; }
+			if (!headTTL && !workTTL) {
+				vscode.window.showWarningMessage('RDF Diff: neither HEAD nor Working are loaded.');
+				return;
+			}
+			if (!headTTL) {
+				vscode.window.showWarningMessage('RDF Diff: could not load HEAD.');
+				return;
+			}
+			if (!workTTL) {
+				vscode.window.showWarningMessage('RDF Diff: could not load Working.');
+				return;
+			}
 
-    const pair = await canonPair(client, leftNQ, rightNQ);
+			const pair = await isomorphicPair(client, headTTL, workTTL, uri.toString());
 
-    const LU = makeRdfUri(uri, 'left', 'HEAD');
-    const RU = makeRdfUri(uri, 'right', 'WORK');
-    provider.set(LU, pair.left);
-    provider.set(RU, pair.right);
-    await vscode.commands.executeCommand('vscode.diff', LU, RU, `RDF Diff (HEAD ↔ Working): ${ed.document.fileName.split(/[\\/]/).pop()}`);
-  }));
+			const LU = makeRdfUri(uri, 'left', 'HEAD');
+			const RU = makeRdfUri(uri, 'right', 'WORK');
+			provider.set(LU, pair.leftAligned);
+			provider.set(RU, pair.rightAligned);
 
-  context.subscriptions.push(vscode.commands.registerCommand('rdfdiff.compareWithRef', async () => {
-    const ed = ensureTurtle(); if (!ed) return;
-    const uri = ed.document.uri;
-    const ref = await vscode.window.showInputBox({
-      prompt: 'Enter a Git ref', 
-      placeHolder: 'e.g. HEAD~1, main, 1a2b3c4'
-    });
-    if (!ref) return;
+			const fileName = uri.fsPath.split(/[\\/]/).pop();
+			const tag = pair.method ? ` • ${pair.method}` : '';
+			await vscode.commands.executeCommand(
+				'vscode.diff',
+				LU,
+				RU,
+				`RDF Semantic Diff (HEAD ↔ Working)${tag}: ${fileName}`
+			);
+		})
+	);
 
-    const [leftNQ, rightNQ] = await Promise.all([
-      getRefNQuads(client, uri, ref),
-      getWorkingNQuadsUnified(client, uri)
-    ]);
+	context.subscriptions.push(
+		vscode.commands.registerCommand('rdfusion.compareWithRef', async (arg?: unknown) => {
+			const uri = await ensureTurtleUri(arg);
+			if (!uri) {return;}
 
-    if (!leftNQ && !rightNQ) { 
-      vscode.window.showWarningMessage(`RDF Diff: neither ${ref} nor Working are loaded.`); 
-      return; 
-    }
-    if (!leftNQ) { 
-      vscode.window.showWarningMessage(`RDF Diff: could not load ${ref}.`); 
-      return; 
-    }
-    if (!rightNQ) { 
-      vscode.window.showWarningMessage('RDF Diff: could not load Working.'); 
-      return; 
-    }
+			const ref = await vscode.window.showInputBox({
+				prompt: 'Enter a Git ref',
+				placeHolder: 'e.g. HEAD~1, main, 1a2b3c4'
+			});
+			if (!ref) {return;}
 
-    const pair = await canonPair(client, leftNQ, rightNQ);
+			const [refTTL, workTTL] = await Promise.all([
+				getRefTurtle(uri, ref),
+				getWorkingTurtle(uri)
+			]);
 
-    const LU = makeRdfUri(uri, 'left', ref);
-    const RU = makeRdfUri(uri, 'right', 'WORK');
-    provider.set(LU, pair.left);
-    provider.set(RU, pair.right);
-    await vscode.commands.executeCommand('vscode.diff', LU, RU, `RDF Diff (${ref} ↔ Working): ${ed.document.fileName.split(/[\\/]/).pop()}`);
-  }));
+			if (!refTTL && !workTTL) {
+				vscode.window.showWarningMessage(`RDF Diff: neither ${ref} nor Working are loaded.`);
+				return;
+			}
+			if (!refTTL) {
+				vscode.window.showWarningMessage(`RDF Diff: could not load ${ref}.`);
+				return;
+			}
+			if (!workTTL) {
+				vscode.window.showWarningMessage('RDF Diff: could not load Working.');
+				return;
+			}
+
+			const pair = await isomorphicPair(client, refTTL, workTTL, uri.toString());
+
+			const LU = makeRdfUri(uri, 'left', ref);
+			const RU = makeRdfUri(uri, 'right', 'WORK');
+			provider.set(LU, pair.leftAligned);
+			provider.set(RU, pair.rightAligned);
+
+			const fileName = uri.fsPath.split(/[\\/]/).pop();
+			const tag = pair.method ? ` • ${pair.method}` : '';
+			await vscode.commands.executeCommand(
+				'vscode.diff',
+				LU,
+				RU,
+				`RDF Semantic Diff (${ref} ↔ Working)${tag}: ${fileName}`
+			);
+		})
+	);
 }

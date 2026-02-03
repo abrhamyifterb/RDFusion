@@ -48,6 +48,7 @@ import { RdfDiffService } from './business/triple-management/rdf-diff/ttl-diff-c
 import { JsonLdRefactorProvider } from './business/autocomplete/prefix/jsonld/jsonld-prefix-refactor.js';
 import { JsonLdRenameProvider } from './business/autocomplete/prefix/jsonld/jsonld-rename-provider.js';
 import { JsonLdDifferentModesCommand } from './business/triple-management/formatting/jsonld/jsonld-formatting-command.js';
+import { UnicodeEscapesCommand } from './business/triple-management/unicode-escape/unicode-escapes-command.js';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -86,7 +87,7 @@ const termProvider   = new TermProvider(dataManager, prefixRegistry, serverConfi
 termProvider.init();
 
 const ttlDiff   = new RdfDiffService(
-	connection, documents, dataManager
+	connection, documents
 );
 
 const groupCommand   = new GroupBySubjectCommand(
@@ -109,6 +110,11 @@ const jsonldTermProvider = new JsonLdTermCompletionProvider(termProvider, prefix
 const turtleFormatterCommand = new TurtleFormatterCommand(dataManager, connection, documents, prefixRegistry, serverConfigSettings);
 const jsonldFrameCommand = new JsonldFrameCommand(dataManager, connection, documents);
 const jsonldFormattingCommand = new JsonLdDifferentModesCommand(dataManager, connection, documents, prefixRegistry);
+
+const unicodeEscapeTransformCommand = new UnicodeEscapesCommand(
+	connection, documents
+);
+
 
 const initialShapes  = shapeManager.getGlobalShapes();
 const shaclRegistry = new ShaclRegistry(initialShapes);
@@ -154,6 +160,7 @@ connection.onInitialize((params: InitializeParams) => {
 					'rdf.compactJsonld',
 					'rdf.expandJsonld',
 					'rdf.flattenJsonld',
+					'rdf.turtleUnicodeEscapeTransform',
 				]
 			},
 			diagnosticProvider: {
@@ -295,6 +302,10 @@ interface FrameArgs {
 	data: string; 
 }
 
+interface UnicodeEscapeTargetsArg {
+	uri: string;
+	mode: string; 
+}
 
 type ExecHandler = (args: any[] | undefined) => Promise<any> | any;
 
@@ -385,6 +396,11 @@ registerExec('rdf.formatTriples', async (args) => {
 	const p = arg0<UriArg>(args, ['uri']);
 	connection.console.log('onExecuteCommand: rdf.formatTriples');
 	return turtleFormatterCommand.format(p);
+});
+
+registerExec('rdf.turtleUnicodeEscapeTransform', async (args) => {
+	const p = arg0<UnicodeEscapeTargetsArg>(args, ['uri', 'mode']);
+	return unicodeEscapeTransformCommand.execute(p);
 });
 
 connection.onExecuteCommand(async (params) => {

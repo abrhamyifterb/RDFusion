@@ -21,7 +21,9 @@ export class DuplicateChecker {
 	
 		const map = new Map<string, any[]>();
 		for (const q of quads) {
-			const key = `${q.subject.value}|${q.predicate.value}|${q.object.value}`;
+			const lang = q.object.language ? `@${q.object.language}` : "";
+			const dt = q.object.datatype?.value ? `^^${q.object.datatype.value}` : "";
+			const key = `${q.subject.value}|${q.predicate.value}|${q.object.value}|${lang}${lang ? "" : dt}`;
 			const arr = map.get(key) || [];
 			arr.push(q);
 			map.set(key, arr);

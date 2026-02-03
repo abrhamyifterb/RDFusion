@@ -9,6 +9,7 @@ export default class IdUsageCheck implements ValidationRule {
   private text!: string;
   private contextSpan: { start: number; end: number } | null = null;
   private skipSpans: { start: number; end: number }[] = [];
+  private idAliases = new Set<string>();
 
   init(ctx: { ast: Node; text: string }) {
     this.ast = ctx.ast;
@@ -53,7 +54,7 @@ export default class IdUsageCheck implements ValidationRule {
       const term = nodeText(this.text, keyNode).slice(1, -1);
       if (!idTerms.has(term)) {return;}
 
-      if (!IdUsageCheck.isValidIriNode(valNode, this.text)) {
+      if (!IdUsageCheck.isValidIriNode(valNode, this.text, this.idAliases)) {
         diags.push(
           Diagnostic.create(
             nodeToRange(this.text, valNode),
@@ -96,6 +97,9 @@ export default class IdUsageCheck implements ValidationRule {
             }
           }
         }
+        if (valNode?.type === 'string' && JSON.parse(nodeText(this.text, valNode)) === '@id') {
+          this.idAliases.add(term);
+        }
       }
     });
 
@@ -106,22 +110,25 @@ export default class IdUsageCheck implements ValidationRule {
     return this.skipSpans.some(s => offset >= s.start && offset < s.end);
   }
 
-  private static isValidIriNode(node: Node, text: string): boolean {
+  private static isValidIriNode(node: Node, text: string, idAliases: Set<string>): boolean {
     switch (node?.type) {
       case 'string':
         return true;
 
-      case 'object': {
-        const props = node.children ?? [];
-        return (
-          props.length === 1 &&
-          nodeText(text, props[0].children![0]) === '"@id"' &&
-          props[0].children![1]?.type === 'string'
-        );
-      }
+
+    case 'object': {
+      const props = node.children ?? [];
+      if (props.length !== 1) return false;
+
+      const keyText = nodeText(text, props[0].children![0]); 
+      const keyTerm = keyText.slice(1, -1);
+      const isIdKey = keyText === '"@id"' || idAliases.has(keyTerm);
+
+      return isIdKey && props[0].children![1]?.type === 'string';
+    }
 
       case 'array':
-        return node.children!.every(child => IdUsageCheck.isValidIriNode(child, text));
+        return node.children!.every(child => IdUsageCheck.isValidIriNode(child, text, idAliases));
 
       default:
         return false;

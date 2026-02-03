@@ -45,3 +45,5 @@ As you type prefix names, RDFusion suggests terms from:
 - RUN **“RDFusion: Turtle Formatter”** formats Turtle triples in the current editor tab using your configured style rules.
 - RUN **“RDFusion: Turtle Formatter Configuration”** to customize Turtle formatting style rules — including indentation, line breaks, predicateObjectlist formatting, and use of prefixes. 
 - RUN **“RDFusion: Frame Jsonld From Template”** to apply a predefined JSON-LD frame to the current open jsonld editor tab.
+- RUN **“RDFusion: Encode Turtle Unicode Escapes”** to convert Unicode characters in Turtle IRIs and string literals into uXXXX or UXXXXXXXX escape sequences.
+- RUN **“RDFusion: Decode Turtle Unicode Escapes”** to convert uXXXX or UXXXXXXXX escape sequences in Turtle IRIs and string literals back into Unicode characters while preserving Turtle-safe escaping.

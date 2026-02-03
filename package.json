@@ -3,7 +3,7 @@
 	"description": "RDFusion brings RDF editing and validation directly into VS Code.",
 	"author": "RDFusion",
 	"license": "MIT",
-	"version": "1.0.6",
+	"version": "1.1.0",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/abrhamyifterb/RDFusion"
@@ -184,11 +184,11 @@
 				"enablement": "editorLangId == turtle"
 			},
 			{
-				"command": "rdfdiff.compareWithHEAD",
+				"command": "rdfusion.compareWithHEAD",
 				"title": "RDFusion: RDF Diff Compare with HEAD"
 			},
 			{
-				"command": "rdfdiff.compareWithRef",
+				"command": "rdfusion.compareWithRef",
 				"title": "RDFusion: RDF Diff Compare with Ref…"
 			},
 			{
@@ -210,6 +210,16 @@
 				"command": "jsonld.applyPrefixAndRename",
 				"title": "JSON-LD: Apply Prefix and Rename",
 				"when": "false"
+			},
+			{
+				"command": "rdfusion.encodeTurtleUnicodeEscapes",
+				"title": "RDFusion: Encode Turtle Unicode Escapes",
+				"enablement": "editorLangId == turtle"
+			},
+			{
+				"command": "rdfusion.decodeTurtleUnicodeEscapes",
+				"title": "RDFusion: Decode Turtle Unicode Escapes",
+				"enablement": "editorLangId == turtle"
 			}
 		],
 		"menus": {
@@ -243,7 +253,7 @@
 			],
 			"scm/resourceState/context": [
 				{
-					"command": "rdfdiff.compareWithHEAD",
+					"command": "rdfusion.compareWithHEAD",
 					"group": "inline@2",
 					"when": "scmProvider == git && resourceExtname == .ttl"
 				}
@@ -472,6 +482,7 @@
 		"rdf-canonize": "^4.0.1",
 		"rdf-dereference": "^4.0.0",
 		"rdf-ext": "^2.5.2",
+		"rdfjs-c14n": "^2.0.5",
 		"shacl-engine": "^1.0.2",
 		"undici": "^6.21.3",
 		"uri-js": "^4.4.1",
