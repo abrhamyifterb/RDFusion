@@ -3,7 +3,7 @@
 	"description": "RDFusion brings RDF editing and validation directly into VS Code.",
 	"author": "RDFusion",
 	"license": "MIT",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/abrhamyifterb/RDFusion"
@@ -185,7 +185,11 @@
 			},
 			{
 				"command": "rdfusion.compareWithHEAD",
-				"title": "RDFusion: RDF Diff Compare with HEAD"
+				"title": "RDFusion: RDF Diff Compare with HEAD",
+				"icon": {
+					"light": "resources/logo.png",
+					"dark": "resources/logo.png"
+				}
 			},
 			{
 				"command": "rdfusion.compareWithRef",
