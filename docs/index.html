@@ -389,7 +389,8 @@
             <li><a href="#install">Install</a></li>
             <li><a href="#settings">Settings</a></li>
             <li><a href="#validation">Validation</a></li>
-            <li><a href="#autocomplete">Autocompletion</a></li>
+            <li><a href="#autocomplete">Autocomplete & Hover</a></li>
+            <li><a href="#jsonld-processing">JSON-LD</a></li>
             <li><a href="#triples">Triple Management</a></li>
           </ul>
         </nav>
@@ -401,14 +402,17 @@
         <h1>RDFusion — User Manual</h1>
         <p>
           How to install, configure, and use RDF editing in VS Code with
-          real-time validation, autocompletion, prefix refactoring, and
-          triple-management. The demos are in <strong>GIFs</strong> — click any
-          to enlarge.
+          Turtle and JSON-LD validation, SHACL selection and coverage,
+          vocabulary-aware autocomplete and hover information, JSON-LD
+          processing, and Triple Management. The demos are in
+          <strong>GIFs</strong> — click any to enlarge.
         </p>
         <div class="badges">
           <span class="badge">Turtle (.ttl)</span>
           <span class="badge">JSON-LD (.jsonld)</span>
           <span class="badge">SHACL</span>
+          <span class="badge">Vocabulary metadata</span>
+          <span class="badge">RDF diff</span>
           <span class="badge">VoID</span>
         </div>
       </div>
@@ -438,13 +442,16 @@
           <a class="sub" href="#validation-shacl">· SHACL constraints</a>
           <a class="sub" href="#validation-toggle">· Toggle & performance</a>
           <a class="sub" href="#validation-rules">· Configurable rules</a>
-          <a href="#autocomplete">Autocompletion & Prefixes</a>
+          <a href="#autocomplete">Autocomplete & Hover</a>
           <a class="sub" href="#ac-trigger">· Triggering suggestions</a>
           <a class="sub" href="#ac-sources">· Local & remote sources</a>
+          <a class="sub" href="#ac-hover">· Structured hover details</a>
           <a class="sub" href="#ac-context">· Suggestions (TTL/JSON-LD)</a>
           <a class="sub" href="#ac-insert">· Auto-declare prefixes</a>
           <a class="sub" href="#ac-refactor-curie">· Refactor JSON-LD CURIEs</a>
           <a class="sub" href="#ac-settings">· Settings</a>
+          <a href="#jsonld-processing">JSON-LD Processing</a>
+          <a class="sub" href="#jsonld-commands">· Compact, expand, flatten, frame</a>
           <a href="#triples">Triple Management</a>
           <a class="sub" href="#tri-filter">· Filter</a>
           <a class="sub" href="#tri-sort-group">· Sort & group</a>
@@ -453,6 +460,7 @@
           <a class="sub" href="#tri-merge">· Merge files</a>
           <a class="sub" href="#tri-diff">· RDF diff</a>
           <a class="sub" href="#tri-void">· Dataset statistics (VoID)</a>
+          <a class="sub" href="#tri-unicode">· Unicode normalization</a>
         </aside>
 
         <div class="flow">
@@ -492,8 +500,9 @@
                 <h3 id="install-reqs">Requirements & Internationalization</h3>
                 <ul>
                   <li>
-                    VS Code; Internet recommended for such as remote vocabulary lookups
-                    (LOV, prefix registries).
+                    VS Code; Internet is recommended for remote vocabulary
+                    lookups, prefix registries, and dereferenceable vocabulary
+                    metadata.
                   </li>
                   <li>UI is English-only in this version.</li>
                 </ul>
@@ -543,9 +552,11 @@
               <li>
                 Open the Command Palette (<kbd>Ctrl/Cmd</kbd> +
                 <kbd>Shift</kbd> + <kbd>P</kbd>) and run
-                <em>RDFusion</em> commands like
-                <strong>Filter Triples</strong> or
-                <strong>Generate VoID</strong>.
+                <em>RDFusion</em> commands such as
+                <strong>Configure SHACL Selection</strong>,
+                <strong>Show SHACL Coverage</strong>,
+                <strong>Filter Triples</strong>, <strong>Generate VoID</strong>,
+                or JSON-LD <strong>Compact / Expand / Flatten / Frame</strong>.
               </li>
             </ol>
           </section>
@@ -574,12 +585,17 @@
               <h3>Validation</h3>
               <ul>
                 <li>
-                  <strong>SHACL</strong>: enable/disable applying SHACL shapes
-                  from your workspace.
+                  <strong>Turtle and JSON-LD</strong>: enable syntax, literal,
+                  datatype, duplicate, undefined-prefix, and IRI-scheme checks.
                 </li>
                 <li>
-                  <strong>Checks</strong>: language tags, xsd-datatypes,
-                  duplicates, IRI schemes, and more.
+                  <strong>SHACL</strong>: apply workspace shapes automatically,
+                  or open <em>Configure SHACL Selection</em> to limit validation
+                  to selected files, shapes, targets, or properties.
+                </li>
+                <li>
+                  <strong>Remote vocabulary typo checks</strong>: use cached
+                  vocabulary terms to warn about likely misspelled known terms.
                 </li>
               </ul>
             </article>
@@ -592,14 +608,17 @@
                   undeclared prefix, add the declaration automatically.
                 </li>
                 <li>
-                  <strong>Suggestion Sources</strong>: choose local only, remote
-                  only, or both.
+                  <strong>Suggestion Sources</strong>: choose local workspace
+                  terms, remote vocabulary terms, or both.
                 </li>
                 <li>
-                  <strong>Trigger Behavior</strong>: automatic or manual (<kbd
-                    >Ctrl/Cmd</kbd
-                  >
-                  + <kbd>Space</kbd>).
+                  <strong>Hover and completion metadata</strong>: show structured
+                  labels, definitions, IRI links, type/domain/range, selected
+                  SHACL guidance, and useful vocabulary references when available.
+                </li>
+                <li>
+                  <strong>Trigger Behavior</strong>: automatic or manual
+                  (<kbd>Ctrl/Cmd</kbd> + <kbd>Space</kbd>).
                 </li>
               </ul>
             </article>
@@ -654,28 +673,36 @@
           <section id="validation" class="card" aria-labelledby="val-h2">
             <h2 id="val-h2">Real-time Validation</h2>
             <p>
-              As you edit, the extension checks syntax, other restrictions enabled, and
-              SHACL constraints and shows inline diagnostics.
+              As you edit, RDFusion validates Turtle and JSON-LD documents,
+              applies enabled quality checks, and can run SHACL validation from
+              workspace shapes. Diagnostics are shown inline in VS Code.
             </p>
 
             <div class="grid-2">
               <div>
                 <h3 id="validation-errors">Live error highlighting</h3>
                 <p>
-                  Syntax errors and warnings are underlined as you type, with
-                  details shown inline.
+                  Syntax errors, undefined prefixes, literal/datatype issues,
+                  IRI scheme problems, duplicate triples, and selected JSON-LD
+                  structural issues are underlined as you type.
                 </p>
 
                 <h3 id="validation-shacl">SHACL constraints</h3>
                 <p>
-                  If your workspace contains SHACL shapes, they are applied automatically if enabled.
+                  If your workspace contains SHACL shapes, RDFusion can apply
+                  them automatically. Use <em>Configure SHACL Selection</em>
+                  when a workspace has many shapes and you want to validate
+                  only the relevant shape files, shapes, targets, or properties.
+                  Use <em>Show SHACL Coverage</em> to inspect which data fields
+                  are covered by selected shapes.
                 </p>
 
                 <h3 id="validation-toggle">Toggle & performance</h3>
                 <p>
-                  Use Command-Palette or Settings to enable/disable checks.
-                  Basic parsing errors are prioritized; deeper checks run when
-                  syntax is corrected.
+                  Use the Command Palette or Settings to enable or disable
+                  checks. Basic parsing errors are prioritized; deeper checks
+                  run when syntax is corrected. Remote vocabulary checks are
+                  cached and best-effort.
                 </p>
 
                 <h3 id="validation-rules">Configurable rules</h3>
@@ -771,7 +798,7 @@
 
           <!-- AUTOCOMPLETE / PREFIX MGMT -->
           <section id="autocomplete" class="card" aria-labelledby="ac-h2">
-            <h2 id="ac-h2">Autocompletion & Prefix Management</h2>
+            <h2 id="ac-h2">Autocompletion, Hover & Prefix Management</h2>
             <div class="grid-2">
               <div>
                 <h3 id="ac-trigger">Triggering suggestions</h3>
@@ -792,15 +819,27 @@
 
                 <h3 id="ac-sources">Local & remote sources</h3>
                 <p>
-                  Terms come from your open files and remote
-                  vocabularies (e.g., FOAF via direct derefrencing / or LOV). Remote
-                  results are cached.
+                  Terms come from open workspace files, JSON-LD contexts,
+                  known prefixes, and remote vocabularies when available. Remote
+                  vocabulary results are cached and used for suggestions, hover
+                  information, and typo warnings.
                 </p>
 
-                <h3 id="ac-context">(TTL/JSON-LD)</h3>
+                <h3 id="ac-hover">Structured hover details</h3>
                 <p>
-                  Suggestions inside triples, prefix declarations,
-                  and JSON-LD contexts.
+                  Hover and completion documentation is organized into compact
+                  sections. When vocabulary metadata is available, RDFusion can
+                  show the term label, clickable IRI, definition, type, domain,
+                  range, subclass or subproperty relations, inverse/equivalent
+                  terms, status, selected SHACL guidance, and useful references.
+                  Missing fields are simply omitted to avoid noisy output.
+                </p>
+
+                <h3 id="ac-context">Suggestions in Turtle and JSON-LD</h3>
+                <p>
+                  Suggestions are context-aware in Turtle triples, prefix
+                  declarations, JSON-LD compact IRIs, and JSON-LD
+                  <code>@context</code> mappings.
                 </p>
 
                 <h3 id="ac-insert">Auto-declare prefix</h3>
@@ -817,8 +856,8 @@
 
                 <h3 id="ac-settings">Configurable behavior</h3>
                 <p>
-                  Disable remote lookups when offline, and adjust auto-declare
-                  options in Settings.
+                  Disable remote lookups when offline, adjust auto-declare
+                  options, and choose whether local or remote suggestions are used.
                 </p>
               </div>
               <div>
@@ -896,15 +935,62 @@ ex:Homer a foaf:Person ;
             </details>
           </section>
 
+
+          <!-- JSON-LD PROCESSING -->
+          <section id="jsonld-processing" class="card" aria-labelledby="jsonld-h2">
+            <h2 id="jsonld-h2">JSON-LD Processing</h2>
+            <p>
+              RDFusion provides JSON-LD commands for common processing tasks.
+              These commands operate on the current JSON-LD document and open
+              the result in VS Code for inspection or reuse.
+            </p>
+
+            <article id="jsonld-commands">
+              <h3>Compact, expand, flatten, and frame</h3>
+              <ul>
+                <li>
+                  <strong>Expand JSON-LD</strong>: expands compact terms into
+                  full IRI-based JSON-LD structures.
+                </li>
+                <li>
+                  <strong>Compact JSON-LD</strong>: uses a context to produce a
+                  shorter, term-based JSON-LD representation.
+                </li>
+                <li>
+                  <strong>Flatten JSON-LD</strong>: rewrites the graph into a
+                  flatter node-oriented structure.
+                </li>
+                <li>
+                  <strong>Frame JSON-LD From Template</strong>: applies a JSON-LD
+                  frame to shape the output around the resources you want to
+                  inspect.
+                </li>
+              </ul>
+              <div class="callout" style="margin-top: 12px">
+                <strong>Scope:</strong> JSON-LD validation and context-aware
+                editing are covered by validation and autocomplete. This section
+                is only about JSON-LD processing commands.
+              </div>
+            </article>
+          </section>
+
           <!-- TRIPLE MANAGEMENT -->
           <section id="triples" class="card" aria-labelledby="tri-h2">
             <h2 id="tri-h2">Triple Management</h2>
+            <p>
+              Triple Management commands help inspect, organize, compare, and
+              reuse RDF files without leaving VS Code. Turtle-specific commands
+              include formatting, grouping, sorting, RDF diff, visual IRI
+              shortening, and Unicode escape normalization. Shared RDF commands
+              include filtering, merging, and VoID generation.
+            </p>
 
-            <article id="tri-filter">
+<article id="tri-filter">
               <h3>Filter triples (by subject / predicate / object)</h3>
               <p>
                 Use Command Palette → <em>RDFusion: Filter Triples by …</em> to
-                generate a new tab view containing only matching triples.
+                generate a new tab containing only matching triples. Filtering
+                can focus by subject, predicate, object, or a combined pattern.
               </p>
               <div class="media" data-gallery="filter">
                 <div class="tabs" role="tablist" aria-label="Filter demos">
@@ -951,8 +1037,10 @@ ex:Homer a foaf:Person ;
             <article id="tri-format">
               <h3>Format Turtle document</h3>
               <p>
-                Use <em>RDFusion: Format Document</em> to apply consistent
-                indentation, prefix mapping, ... .
+                Use <em>RDFusion: Turtle Formatter</em> to apply consistent
+                indentation, subject grouping, predicate layout, object list
+                wrapping, known-prefix compaction, and numeric/boolean literal
+                formatting based on your settings.
               </p>
               <div class="media" data-gallery="format">
                 <div class="tabs" role="tablist" aria-label="Format demos">
@@ -1019,12 +1107,14 @@ ex:Homer a foaf:Person ;
             <article id="tri-diff">
               <h3>Turtle RDF diff</h3>
               <p>
-                Compare current open turtle file with HEAD or a specific commit
-                in Git. The diff view compares RDF-aware changes.
+                Compare the current Turtle file with HEAD or a specific Git
+                reference. The diff view compares parsed RDF triples instead of
+                only line-by-line text changes.
               </p>
               <div class="callout" style="margin: 12px 0">
-                <strong>Note:</strong> When blank nodes are present the diff
-                shows RDF differences (support will be added soon).
+                <strong>Note:</strong> RDF diff is currently focused on Turtle
+                documents. Blank-node-heavy graphs may still require manual
+                review.
               </div>
               <div class="media" data-gallery="rdf-diff">
                 <div class="tabs" role="tablist" aria-label="RDF diff demos">
@@ -1044,7 +1134,7 @@ ex:Homer a foaf:Person ;
             
             <article id="tri-void">
             <h3>Dataset statistics (VoID)</h3>
-            <p>Run <em>RDFusion: Generate VoID Description</em> to compute counts (triples, distinct subjects/objects, classes) and output a VoID Turtle in a new tab.</p>
+            <p>Run <em>RDFusion: Generate VoID</em> to compute dataset-level counts such as triples, distinct subjects and objects, and classes. The result opens as a VoID Turtle description in a new tab.</p>
               <div class="media" data-gallery="void">
                 <div class="tabs" role="tablist" aria-label="VoID demos">
                   <button role="tab" aria-selected="true" data-tab="gif1">
@@ -1060,6 +1150,17 @@ ex:Homer a foaf:Person ;
                 </div>
               </div>
           </article>
+
+
+            <article id="tri-unicode">
+              <h3>Unicode escape normalization</h3>
+              <p>
+                Use <em>Encode Turtle Unicode Escapes</em> or
+                <em>Decode Turtle Unicode Escapes</em> when you need to switch
+                between escaped Unicode sequences and readable characters in
+                Turtle string literals or IRIs.
+              </p>
+            </article>
 
           </section>
         </div>
