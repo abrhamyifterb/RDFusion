@@ -24,7 +24,7 @@ export class JsonLdRenameProvider {
     const doc = this.documents.get(params.textDocument.uri);
     if (!doc) return null;
 
-    const parsed = this.dataManager.getParsedData(params.textDocument.uri) as JsonldParsedGraph | undefined;
+    const parsed = this.dataManager.getGraphSnapshot(params.textDocument.uri) as JsonldParsedGraph | undefined;
     if (!parsed) return null;
     const { text, ast } = parsed;
 
@@ -66,7 +66,7 @@ export class JsonLdRenameProvider {
     newName: string;
   }) => {
     const uri = params.textDocument.uri;
-    const parsed = this.dataManager.getParsedData(uri) as JsonldParsedGraph | undefined;
+    const parsed = this.dataManager.getGraphSnapshot(uri) as JsonldParsedGraph | undefined;
     if (!parsed) return null;
 
     const { text, ast, contextMap } = parsed;

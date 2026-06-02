@@ -1,11 +1,12 @@
 import { ShaclShape } from '../../../data/shacl/ishape-extractor';
+import { SH_DESCRIPTION, SH_NAME, SH_PATH, SH_PROPERTY, SH_TARGET_CLASS } from '../../../data/rdf/rdf-vocabulary';
 
 const SH = {
-	targetClass: 'http://www.w3.org/ns/shacl#targetClass',
-	property:    'http://www.w3.org/ns/shacl#property',
-	path:        'http://www.w3.org/ns/shacl#path',
-	description: 'http://www.w3.org/ns/shacl#description',
-	name:        'http://www.w3.org/ns/shacl#name'
+	targetClass: SH_TARGET_CLASS,
+	property: SH_PROPERTY,
+	path: SH_PATH,
+	description: SH_DESCRIPTION,
+	name: SH_NAME,
 };
 
 export interface ShaclProperty {

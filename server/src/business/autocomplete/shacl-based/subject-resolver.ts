@@ -20,26 +20,27 @@ import {
 	): ResolvedSubject | null {
 		const uri    = params.textDocument.uri;
 		const doc    = docs.get(uri);
-		const parsed = dataMgr.getParsedData(uri) as ParsedGraph | undefined;
+		const parsed = dataMgr.getGraphSnapshot(uri) as ParsedGraph | undefined;
 		if (!doc || !parsed) {return null;}
 	
 		const { tokens, quads, prefixes } = parsed;
 		const cursorOff = doc.offsetAt(params.position);
-	
-		const before = tokens.filter(t => t.endOffset <= cursorOff);
+		const subjects = new Set(quads.map(q => q.subject.value));
 	
 		let lastDotIdx = -1;
-		for (let i = before.length - 1; i >= 0; i--) {
-			if (before[i].image === '.') {
+		for (let i = tokens.length - 1; i >= 0; i--) {
+			const token = tokens[i];
+			if (token.endOffset > cursorOff) {continue;}
+			if (token.image === '.') {
 				lastDotIdx = i;
 				break;
 			}
 		}
-		// console.log('[SHACL·Resolver] lastDotIdx =', lastDotIdx, 'token:', lastDotIdx >= 0 ? before[lastDotIdx].image : 'none');
 	
 		const startIdx = lastDotIdx + 1;
-		for (let i = startIdx; i < before.length; i++) {
-			const t = before[i];
+		for (let i = startIdx; i < tokens.length; i++) {
+			const t = tokens[i];
+			if (t.endOffset > cursorOff) {break;}
 			let iri: string | undefined;
 	
 			if (t.type === 'IRIREF') {
@@ -52,17 +53,15 @@ import {
 				}
 			}
 	
-			if (iri && quads.some(q => q.subject.value === iri)) {
-			// console.log('[SHACL·Resolver] matched subject token', t.image, iri, `[${t.startOffset},${t.endOffset})`);
-			return {
-				iri,
-				tokenOffset: t.startOffset,
-				tokenLength: t.endOffset - t.startOffset
-			};
+			if (iri && subjects.has(iri)) {
+				return {
+					iri,
+					tokenOffset: t.startOffset,
+					tokenLength: t.endOffset - t.startOffset
+				};
 			}
 		}
 	
-		// console.log('[SHACL·Resolver] no matching subject after last dot');
 		return null;
 	}
 }

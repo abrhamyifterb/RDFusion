@@ -1,17 +1,22 @@
 import { Cache } from './cache.js';
 import { IFetcher } from './ifetcher';
+import { DC_NS, DCAT_NS, DCTERMS_NS, FOAF_NS, OWL_NS, PROV_NS, RDF_NS, RDFS_NS, SCHEMA_NS, SKOS_NS, XSD_NS } from '../../../data/rdf/rdf-vocabulary';
+
+export const PREFIX_CC_FETCH_TIMEOUT_MS = 5000;
 
 export const DEFAULT_PREFIXES: Record<string, string> = {
-  rdf:     'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
-  rdfs:    'http://www.w3.org/2000/01/rdf-schema#',
-  owl:     'http://www.w3.org/2002/07/owl#',
-  xsd:     'http://www.w3.org/2001/XMLSchema#',
-  skos:    'http://www.w3.org/2004/02/skos/core#',
-  foaf:    'http://xmlns.com/foaf/0.1/',
-  schema:  'http://schema.org/',
-  dcterms: 'http://purl.org/dc/terms/',
-  dc:      'http://purl.org/dc/elements/1.1/',
-  prov:    'http://www.w3.org/ns/prov#',
+  rdf:     RDF_NS,
+  rdfs:    RDFS_NS,
+  owl:     OWL_NS,
+  xsd:     XSD_NS,
+  skos:    SKOS_NS,
+  foaf:    FOAF_NS,
+  schema:  SCHEMA_NS,
+  dcterms: DCTERMS_NS,
+  dct:     DCTERMS_NS,
+  dc:      DC_NS,
+  dcat:    DCAT_NS,
+  prov:    PROV_NS,
 };
 
 export class PrefixRegistry {
@@ -31,7 +36,8 @@ export class PrefixRegistry {
   private async preloadRemote() {
     try {
       const data = await this.fetcher.getPrefixes<Record<string, string>>(
-        'https://prefix.cc/popular/all.file.json'
+        'https://prefix.cc/popular/all.file.json',
+        { timeoutMs: PREFIX_CC_FETCH_TIMEOUT_MS },
       );
       if (data && typeof data === 'object') {
         for (const [p, iri] of Object.entries(data)) {this.setDynamic(p, iri);}
@@ -68,20 +74,37 @@ export class PrefixRegistry {
       const pPinned = this.pinnedIriToPrefix.get(v);
       if (pPinned) {return pPinned;}
     }
-    const variants = new Set(this.iriVariants(iri));
+
     for (const { prefix, iri: known } of this.dynPrefixToIri.getAll()) {
-      if (variants.has(known)) {
-        for (const v of variants) {this.dynIriToPrefix.set(v, prefix);}
-        return prefix;
-      }
+      if (this.iriStartsWithKnownNamespace(iri, known)) {return prefix;}
     }
     for (const [prefix, known] of this.pinnedPrefixToIri.entries()) {
-      if (variants.has(known)) {
-        for (const v of variants) {this.dynIriToPrefix.set(v, prefix);}
-        return prefix;
-      }
+      if (this.iriStartsWithKnownNamespace(iri, known)) {return prefix;}
     }
     return undefined;
+  }
+
+  /**
+   * A namespace explicitly declared in a Turtle prefix or JSON-LD context can be
+   * treated as a remote vocabulary candidate even when it is not in the built-in
+   * prefix list or prefix.cc. RDFusion only uses it for diagnostics after a
+   * vocabulary document has actually been fetched and parsed successfully.
+   */
+  public isKnownVocabularyNamespace(iri: string | undefined): boolean {
+    if (!iri) return false;
+    return this.isPotentialRemoteVocabularyNamespace(iri) || this.hasExactKnownNamespace(iri);
+  }
+
+  /**
+   * When a namespace IRI is supplied by the current document, validate/fetch by
+   * that IRI rather than by the prefix label. This allows aliases and remote
+   * vocabularies outside the default prefix list to share the same cache.
+   */
+  public isKnownVocabulary(prefix: string, namespaceIri?: string): boolean {
+    if (namespaceIri !== undefined) {
+      return this.isKnownVocabularyNamespace(namespaceIri);
+    }
+    return this.getIri(prefix) !== undefined;
   }
 
   public async ensure(prefix: string): Promise<string | undefined> {
@@ -90,7 +113,8 @@ export class PrefixRegistry {
 
     try {
       const data = await this.fetcher.getPrefixes<Record<string, string>>(
-        `https://prefix.cc/${encodeURIComponent(prefix)}.file.json`
+        `https://prefix.cc/${encodeURIComponent(prefix)}.file.json`,
+        { timeoutMs: PREFIX_CC_FETCH_TIMEOUT_MS },
       );
       const iri = data?.[prefix];
       if (iri) {
@@ -105,6 +129,30 @@ export class PrefixRegistry {
     const merged = new Map<string, string>(this.pinnedPrefixToIri);
     for (const { prefix, iri } of this.dynPrefixToIri.getAll()) {merged.set(prefix, iri);}
     return Array.from(merged, ([prefix, iri]) => ({ prefix, iri }));
+  }
+
+
+
+  private isPotentialRemoteVocabularyNamespace(iri: string): boolean {
+    const t = iri.trim();
+    if (/\s/.test(t)) return false;
+    return /^https?:\/\/[^\s<>]+$/i.test(t);
+  }
+
+  private hasExactKnownNamespace(iri: string): boolean {
+    const variants = new Set(this.iriVariants(iri));
+    for (const { iri: known } of this.dynPrefixToIri.getAll()) {
+      if (variants.has(known)) return true;
+    }
+    for (const known of this.pinnedPrefixToIri.values()) {
+      if (variants.has(known)) return true;
+    }
+    return false;
+  }
+
+  private iriStartsWithKnownNamespace(iri: string, knownNamespace: string): boolean {
+    if (iri.startsWith(knownNamespace)) return true;
+    return this.iriVariants(knownNamespace).some(variant => iri.startsWith(variant));
   }
 
 

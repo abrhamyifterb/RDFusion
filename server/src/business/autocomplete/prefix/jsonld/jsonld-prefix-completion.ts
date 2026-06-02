@@ -75,7 +75,7 @@ export class JsonLdPrefixCompletionProvider {
 		}
 
 		const declareOnColon = before.match(/\s*"([A-Za-z_]\w*):"?$/);
-		if (!inContext && declareOnColon) {
+		if (!inContext && declareOnColon && this.prefixDeclarationEnabled()) {
 			const prefix = declareOnColon[1];
 			if (!used.has(prefix)) {
 				const iri = await this.registry.ensure(prefix);
@@ -121,7 +121,7 @@ export class JsonLdPrefixCompletionProvider {
 			item.insertText       = local == null ? `${pfx}:` : `${pfx}:${local}`;
 			item.documentation    = `\`${pfx}:\` → \`${iri}\``;
 	
-			if (!used.has(pfx) && ctxNode.type !== 'array') {
+			if (this.prefixDeclarationEnabled() && !used.has(pfx) && ctxNode.type !== 'array') {
 				const edit = this.makeContextInsertEdit(doc, ctxNode, pfx, iri);
 				if (edit) {
 				item.additionalTextEdits = [edit];
@@ -184,6 +184,14 @@ export class JsonLdPrefixCompletionProvider {
 		const indent = /^[\s\t]*/.exec(lineText)?.[0] ?? "";
 		const snippet = `\n${indent}"${prefix}": "${iri}",`;
 		return TextEdit.insert(insertPos, snippet);
+	}
+
+	public updateSettings(newSettings: RDFusionConfigSettings) {
+		this.configSettings = newSettings;
+	}
+
+	private prefixDeclarationEnabled(): boolean {
+		return this.configSettings.jsonld?.autocomplete?.['prefixDeclaration'] !== false;
 	}
 
 	private findContextNode(root: Node, text: string): Node|undefined {

@@ -1,3 +1,7 @@
+export interface PrefixFetchOptions {
+	timeoutMs?: number;
+}
+
 export interface IFetcher {
-	getPrefixes<T>(url: string): Promise<T>;
+	getPrefixes<T>(url: string, options?: PrefixFetchOptions): Promise<T>;
 }

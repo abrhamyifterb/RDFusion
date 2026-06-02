@@ -30,7 +30,7 @@ export class JsonLdRefactorProvider {
     const doc = this.documents.get(uri);
     if (!doc) {return [];}
 
-    const parsed = this.dataManager.getParsedData(uri) as JsonldParsedGraph | undefined;
+    const parsed = this.dataManager.getGraphSnapshot(uri) as JsonldParsedGraph | undefined;
     const text = parsed?.text ?? doc.getText();
     const ast = parsed?.ast ?? parseTree(text);
     if (!ast) {return [];}
@@ -62,7 +62,6 @@ export class JsonLdRefactorProvider {
     
 
     if(match) {known = match;}
-    console.log(ns + " .................... " + this.registry.getPrefix('http://www.w3.org/2001/XMLSchema#') + "   + " + this.registry.getAll().length + "  " + this.registry.getIri("xsd"));
 
     const preferred = known ?? this.suggestPrefix(ns, contextMap);
     const title = 'Define a prefix for IRI';
@@ -82,7 +81,7 @@ export class JsonLdRefactorProvider {
     const [uri, pos, preferred] = (args ?? []) as [string, Position, string?];
     if (!uri || !pos) {return;}
 
-    const parsed = this.dataManager.getParsedData(uri) as JsonldParsedGraph | undefined;
+    const parsed = this.dataManager.getGraphSnapshot(uri) as JsonldParsedGraph | undefined;
     const doc = this.documents.get(uri);
     if (!parsed || !doc) {return;}
 

@@ -22,6 +22,6 @@ export function declarePrefixAtTop(
 		}
 	};
 	applyEdit(edit).catch(() => {
-		// console.log(`Something went wrong with prefix - ${prefix} declaration`);
+		console.log(`Something went wrong with prefix - ${prefix} declaration`);
 	});
 }
