@@ -8,6 +8,8 @@ export interface ValidationRule {
 		text: string;
 		ast: Node;
 		contextMap?: Map<string,string>;
+		prefixMap?: Map<string,string>;
+		vocab?: string;
 		definitions?: Definition[];
 	}): void;
 
