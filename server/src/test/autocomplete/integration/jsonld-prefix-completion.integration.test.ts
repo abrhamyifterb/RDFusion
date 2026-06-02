@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { TextDocuments, TextDocumentPositionParams } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { JsonLdPrefixCompletionProvider } from '../../../business/autocomplete/prefix/jsonld/jsonld-prefix-completion';
@@ -28,4 +28,26 @@ describe('JsonLdPrefixCompletionProvider (integration)', () => {
     const items = await (prov as any).provide({ textDocument: { uri: doc.uri }, position: pos } as TextDocumentPositionParams, docs(doc));
     expect(Array.isArray(items)).toBe(true); 
   });
+
+  it('does not auto-insert a context prefix when JSON-LD prefixDeclaration is disabled', async () => {
+    const text = '{"@context":{},"foaf:":""}';
+    const doc = TextDocument.create('file:///doc.jsonld','jsonld',1,text);
+    const registry = {
+      getAll: () => ([{ prefix: 'foaf', iri: 'http://xmlns.com/foaf/0.1/' }]),
+      ensure: async (p: string) => p === 'foaf' ? 'http://xmlns.com/foaf/0.1/' : undefined,
+    } as any;
+    const applyEdit = vi.fn();
+    const prov = new JsonLdPrefixCompletionProvider(
+      registry,
+      { workspace: { applyEdit } } as any,
+      { jsonld: { autocomplete: { prefixDeclaration: false } } } as any,
+    );
+
+    const pos = { line: 0, character: text.indexOf('"foaf:"') + '"foaf:'.length };
+    const items = await (prov as any).provide({ textDocument: { uri: doc.uri }, position: pos } as TextDocumentPositionParams, docs(doc));
+
+    expect(applyEdit).not.toHaveBeenCalled();
+    expect(items.every((item: any) => !item.additionalTextEdits?.length)).toBe(true);
+  });
+
 }); 

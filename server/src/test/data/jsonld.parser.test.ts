@@ -16,13 +16,14 @@ describe('data/jsonld: JsonLdParser', () => {
     expect(out.quads.length).toBeGreaterThanOrEqual(3);
     expect(out.diagnostics.length).toBe(0);
     expect(out.contextMap.get('ex')).toBe('http://example.com/');
-    // Find age with xsd datatype
+    expect(out.prefixMap?.get('ex')).toBe('http://example.com/');
+
     const age = out.quads.find(q => iri(q,'p')==='http://example.com/age') as any;
     expect(age).toBeTruthy();
     if (age?.object?.datatype) {
       expect(term(age.object.datatype)).toBe('http://www.w3.org/2001/XMLSchema#integer');
     }
-    // quad positions attached for @graph subjects
+
     const anyPos = out.quads.find((q:any) => q.positionToken);
     expect(anyPos?.positionToken?.startLine).toBeGreaterThanOrEqual(1);
   });
@@ -40,4 +41,23 @@ describe('data/jsonld: JsonLdParser', () => {
     const out = await parser.parse(FIXTXT('invalid.jsonld'));
     expect(out.diagnostics.length).toBeGreaterThan(0);
   });
+
+  it('tracks JSON-LD 1.1 prefix definitions and @vocab separately from ordinary terms', async () => {
+    const parser = new JsonLdParser();
+    const out = await parser.parse(JSON.stringify({
+      '@context': {
+        schema: 'https://schema.org/',
+        '@vocab': 'schema:',
+        name: 'https://schema.org/name'
+      },
+      'name': 'Alice'
+    }));
+
+    expect(out.contextMap.get('schema')).toBe('https://schema.org/');
+    expect(out.contextMap.get('name')).toBe('https://schema.org/name');
+    expect(out.prefixMap?.get('schema')).toBe('https://schema.org/');
+    expect(out.prefixMap?.has('name')).toBe(false);
+    expect(out.vocab).toBe('https://schema.org/');
+  });
+
 });

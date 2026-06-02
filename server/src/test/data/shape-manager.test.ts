@@ -40,7 +40,6 @@ describe('ShapeManager (SHACL extraction)', () => {
 
   it('recognizes sh:NodeShape with sh:targetClass and property shapes, and updates per-file', () => {
     const g1 = pg([
-      // NodeShape with targetClass and a property constraint
       { s: 'ex:PersonShape', p: RDF_TYPE, o: `${SH}NodeShape` },
       { s: 'ex:PersonShape', p: `${SH}targetClass`, o: 'ex:Person' },
       { s: 'ex:PersonShape', p: `${SH}property`, o: '_:bnode1' },

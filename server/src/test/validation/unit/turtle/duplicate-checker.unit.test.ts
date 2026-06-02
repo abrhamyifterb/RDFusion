@@ -26,5 +26,23 @@ describe('validation/turtle: DuplicateChecker (unit)', () => {
     const warns = diags.filter(d => d.severity === DiagnosticSeverity.Warning);
     expect(warns.length).toBe(2);
     expect(warns[0].message).toMatch(/Duplicate triple/i);
+    expect(warns[0].code).toBe('duplicateTriple');
+    expect(warns[0].source).toBe('RDFusion');
+  });
+
+  it('uses an end-exclusive LSP range that covers the full duplicate token', async () => {
+    const parsed = {
+      quads: [
+        { subject: { value: 's' }, predicate: { value: 'p' }, object: { value: 'o' }, positionToken: pos(1) },
+        { subject: { value: 's' }, predicate: { value: 'p' }, object: { value: 'o' }, positionToken: pos(3) },
+      ],
+      tokens: [], errors: []
+    } as any;
+
+    const checker = new DuplicateChecker();
+    const [diagnostic] = await checker.validate(parsed);
+
+    expect(diagnostic.range.start).toEqual({ line: 0, character: 0 });
+    expect(diagnostic.range.end).toEqual({ line: 0, character: 10 });
   });
 });

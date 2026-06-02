@@ -19,7 +19,6 @@ describe('data/turtle: MillianRDFParser', () => {
     const hasKnows = res.quads.some(q =>
       iri(q,'p') === 'http://example.com/knows' && iri(q,'s').endsWith('/a') && iri(q,'o').endsWith('/b'));
     expect(hasKnows).toBe(true);
-    // positionToken is attached to at least one quad
     const withPos = res.quads.find((q:any)=>q.positionToken);
     expect(withPos?.positionToken?.startLine).toBeGreaterThanOrEqual(1);
   });

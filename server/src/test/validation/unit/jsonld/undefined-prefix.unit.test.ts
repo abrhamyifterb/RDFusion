@@ -8,7 +8,7 @@ describe('UndefinedPrefix (unit)', () => {
     const obj = { "@context": { "ex": "http://ex/" }, "px:prop": "x" };
     const text = JSON.stringify(obj);
     const rule = new UndefinedPrefix();
-    rule.init({ text, ast: parseAst(text), contextMap: ctxMapFrom(obj["@context"] as any) });
+    rule.init({ text, ast: parseAst(text), prefixMap: ctxMapFrom(obj["@context"] as any) });
     const diags = rule.run();
     expect(diags.some(d => /Undefined prefix/i.test(d.message))).toBe(true);
   });

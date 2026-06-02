@@ -17,13 +17,22 @@ describe('jsonld internals (context/definitions/idRange/quad positions)', () => 
   const ast = parseTree(text, [], { allowTrailingComma: true, disallowComments: false })!;
   it('extracts @context term IRIs', () => {
     const map = new ContextExtractor().extract(ast, text);
-    expect(map.get('ex')).toBe('http://example.com');
+    expect(map.get('ex')).toBe('http://example.com/');
+  });
+
+  it('extracts context arrays and does not trim namespace IRIs', () => {
+    const input = '{"@context":[{"other":"http://other.example/"},{"ex":"http://example.com/","name":{"@id":"http://schema.org/name"}}],"ex:a":{}}';
+    const tree = parseTree(input, [], { allowTrailingComma: true, disallowComments: false })!;
+    const map = new ContextExtractor().extract(tree, input);
+    expect(map.get('other')).toBe('http://other.example/');
+    expect(map.get('ex')).toBe('http://example.com/');
+    expect(map.get('name')).toBe('http://schema.org/name');
   });
   it('extracts @graph definitions with ranges', () => {
     const defs = new DefinitionExtractor().extract(ast, text);
     expect(defs.length).toBeGreaterThan(0);
     const first = defs[0];
-    // Definitions may keep compact IRIs like "ex:a" (valid JSON-LD compaction) or expanded IRIs.
+
     if (typeof first.id === 'string' && first.id.startsWith('ex:')) {
       expect(first.id).toMatch(/^ex:[ab]$/);
     } else {
@@ -34,7 +43,7 @@ describe('jsonld internals (context/definitions/idRange/quad positions)', () => 
   it('builds ID ranges and attaches quad positions', () => {
     const ctx = new ContextExtractor().extract(ast, text);
     const idRanges = new IdRangeBuilder(ctx).extract(ast, text);
-    // make a quad with that subject
+
     const q: Quad = DataFactory.quad(
       DataFactory.namedNode('http://example.com/a'),
       DataFactory.namedNode('http://example.com/p'),

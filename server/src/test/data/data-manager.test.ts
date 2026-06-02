@@ -30,12 +30,31 @@ describe('data/DataManager', () => {
     expect(out3).not.toBe(out2);
   });
 
+
+
+  it('bounds retained snapshots with LRU eviction while keeping compatibility APIs safe', async () => {
+    const dm = new DataManager(new Cache(10), mockConnection(), undefined, { maxSnapshotEntries: 2, maxSnapshotBytes: 1024 * 1024 });
+    const ttl = '@prefix ex:<http://ex/> . ex:a ex:p ex:b .';
+    await dm.parseDocument('file:///one.ttl', ttl, 1);
+    await dm.parseDocument('file:///two.ttl', ttl, 1);
+    await dm.parseDocument('file:///three.ttl', ttl, 1);
+
+    expect(dm.getParsedData('file:///one.ttl')).toBeUndefined();
+    expect(dm.getParsedData('file:///two.ttl')).toBeTruthy();
+    expect(dm.getParsedData('file:///three.ttl')).toBeTruthy();
+    expect(dm.getStats().snapshots).toBe(2);
+
+    const compatibilityMap = dm.getAllParsedData();
+    compatibilityMap.clear();
+    expect(dm.getStats().snapshots).toBe(2);
+  });
+
   it('returns diagnostics and logs on parse error (no throw)', async () => {
     const conn = mockConnection();
     const dm = new DataManager(new Cache(10), conn);
     const bad = '@prefix ex:<http://ex/>\nex:a ex:p'; // missing object + terminator
     const out = await dm.parseDocument('file:///bad.ttl', bad, 1) as any;
-    // Contract: resolves with diagnostics instead of throwing
+
     expect(Array.isArray(out.errors)).toBe(true);
     expect(out.errors.length).toBeGreaterThan(0);
     expect(out.quads.length).toBe(0);
