@@ -18,8 +18,8 @@ export const turtleFormattingLabels: Record<TurtleFormattingKey,string> = {
 	useKnownPrefixes: "Refactor full IRIs into prefix form if available",	
 	blankLineBetweenSubjects: "Insert extra blank line between subject blocks",
 	breakSubject: "Place subject on its own line",
-	breakPredicates: "Place each predicate - object pair on its own line",
-	breakPredObj: "Align Predicate-Object-List",
-	breakObjects: "Split comma separated object lists on to their own line",
-	compactSingletonLists: "Render single element lists as '(item)'",
+	breakPredicates: "Place each predicate-object pair on its own line",
+	breakPredObj: "Align predicate-object lists",
+	breakObjects: "Split comma-separated object lists onto separate lines",
+	compactSingletonLists: "Render single-element lists as '(item)'",
 };

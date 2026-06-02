@@ -7,6 +7,6 @@ export type IriSchemeConfigKey = keyof typeof defaultIriSchemeConfig;
 
 export const IriSchemeConfigLabels: Record<IriSchemeConfigKey,string> = {
 	iriSchemeCheck: "Check for non-standard or uncommon IRI schemes",
-	strictSchemeCheck: "Enable strict mode to only allow custom defined IRI schemes",
-	customIriScheme: "Define a custom comma separated whitelist of allowed IRI schemes, like http, https, mailto, tel"
+	strictSchemeCheck: "Use only the custom allowed IRI schemes",
+	customIriScheme: "Allowed IRI schemes, comma-separated, for example: http, https, mailto, tel"
 };

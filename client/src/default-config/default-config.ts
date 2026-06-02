@@ -2,7 +2,8 @@ export const defaultTurtleValidations = {
 	xsdTypeCheck:    true,
 	missingTagCheck: true,
 	shaclConstraint: true,
-	duplicateTriple: true
+	duplicateTriple: true,
+	remoteTermVocabulary: true
 };
 export type TurtleValidationKey = keyof typeof defaultTurtleValidations;
 
@@ -22,7 +23,8 @@ export const defaultJsonLdValidations = {
 	xsdTypeCheck:    true,
 	missingTagCheck: true,
 	shaclConstraint: true,
-	duplicateTriple: true
+	duplicateTriple: true,
+	remoteTermVocabulary: true
 };
 export type JsonLdValidationKey = keyof typeof defaultJsonLdValidations;
 
@@ -35,31 +37,33 @@ export type JsonLdAutocompleteKey = keyof typeof defaultJsonLdAutocomplete;
 
 export const turtleValidationLabels: Record<TurtleValidationKey,string> = {
 	xsdTypeCheck:       "XSD-Datatype validation",
-	missingTagCheck:    "Warning on on literals missing datatype or language tag",
-	shaclConstraint:    "SHACL constraint enforcement",
-	duplicateTriple:    "Duplicate triple check"
+	missingTagCheck:    "Warn when literals are missing a datatype or language tag",
+	shaclConstraint:    "SHACL validation",
+	duplicateTriple:    "Duplicate triple check",
+	remoteTermVocabulary: "Remote vocabulary typo hints"
 };
 
 export const turtleAutocompleteLabels: Record<TurtleAutocompleteKey,string> = {
-	localBased:         "Local-based term completion",
-	remoteBased:        "Remote-based term completion",
+	localBased:         "Local term completion",
+	remoteBased:        "Remote vocabulary term completion",
 	prefixDeclaration:  "Undeclared prefix completion"
 };
 
 export const jsonLdValidationLabels: Record<JsonLdValidationKey,string> = {
-	duplicateId: "Warning on repeated @id",
-	missingType: "Warning on nodes without explicit @type",
-	undefinedPrefix: "Warning on usage of prefixes not in the context",
-	missingTagCheck: "Warning on missing @type/@language for @value",
+	duplicateId: "Warn when @id values are repeated",
+	missingType: "Warn when nodes are missing @type",
+	undefinedPrefix: "Warn when prefixes are not defined in @context",
+	missingTagCheck: "Warn when @value lacks @type or @language",
 	xsdTypeCheck: "XSD-Datatype validation",
-	emptyLiteral: "Warning on empty string literals",
-	nonStringLiteral: "Warning on literals missing datatype or language",
-	shaclConstraint: "SHACL constraint enforcement",
-	duplicateTriple: "Duplicate triple check"
+	emptyLiteral: "Warn on empty string literals",
+	nonStringLiteral: "Warn when JSON-LD literal values are not strings",
+	shaclConstraint: "SHACL validation",
+	duplicateTriple: "Duplicate triple check",
+	remoteTermVocabulary: "Remote vocabulary typo hints"
 };
 
 export const jsonLdAutocompleteLabels: Record<JsonLdAutocompleteKey,string> = {
-	localBased:         "Local-based Completion",
-	remoteBased:        "Remote-based Completion",
-	prefixDeclaration:  "Prefix-declaration Completion"
+	localBased:         "Local term completion",
+	remoteBased:        "Remote vocabulary term completion",
+	prefixDeclaration:  "Prefix declaration completion"
 };
