@@ -1,501 +1,561 @@
 {
-	"name": "rdfusion",
-	"description": "RDFusion brings RDF editing and validation directly into VS Code.",
-	"author": "RDFusion",
-	"license": "MIT",
-	"version": "1.1.1",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/abrhamyifterb/RDFusion"
-	},
-	"publisher": "RDFusion",
-	"workspaces": [
-		"client",
-		"server"
-	],
-	"icon": "resources/logo.png",
-	"categories": [],
-	"keywords": [
-		"rdf",
-		"turtle",
-		"jsonld",
-		"lsp"
-	],
-	"engines": {
-		"vscode": "^1.75.0"
-	},
-	"main": "out/extension.js",
-	"activationEvents": [
-		"onLanguage:turtle",
-		"onLanguage:jsonld",
-		"onView:scm",
-		"onCommand:rdfdiff.scm.refresh"
-	],
-	"extensionKind": [
-		"workspace"
-	],
-	"contributes": {
-		"viewsContainers": {
-			"activitybar": [
-				{
-					"id": "RDFusion",
-					"title": "RDFusion",
-					"icon": "resources/logo.png"
-				}
-			]
-		},
-		"views": {
-			"RDFusion": [
-				{
-					"id": "fileExplorer",
-					"name": "Files"
-				}
-			]
-		},
-		"languages": [
-			{
-				"id": "turtle",
-				"extensions": [
-					".ttl"
-				],
-				"aliases": [
-					"Turtle"
-				]
-			},
-			{
-				"id": "jsonld",
-				"extensions": [
-					".jsonld"
-				],
-				"aliases": [
-					"JSON-LD",
-					"jsonld"
-				]
-			}
-		],
-		"grammars": [
-			{
-				"language": "jsonld",
-				"scopeName": "source.json",
-				"path": "./syntaxes/json.tmLanguage.json"
-			}
-		],
-		"commands": [
-			{
-				"command": "rdfusion.openFile",
-				"title": "RDFusion: Open File"
-			},
-			{
-				"command": "rdfusion.refreshExplorer",
-				"title": "RDFusion: Refresh Explorer"
-			},
-			{
-				"command": "rdfusion.configureTurtleValidations",
-				"title": "RDFusion: Toggle Turtle Validations"
-			},
-			{
-				"command": "rdfusion.configureTurtleAutocomplete",
-				"title": "RDFusion: Toggle Autocomplete"
-			},
-			{
-				"command": "rdfusion.configureJsonldValidations",
-				"title": "RDFusion: Toggle JSON-LD Validations"
-			},
-			{
-				"command": "rdfusion.configureIriSchemeValidation",
-				"title": "RDFusion: IRI Scheme Validation Configuration"
-			},
-			{
-				"command": "rdfusion.formatTriples",
-				"title": "RDFusion: Turtle Formatter",
-				"enablement": "editorLangId == turtle"
-			},
-			{
-				"command": "rdfusion.configureTurtleFormatting",
-				"title": "RDFusion: Turtle Formatter Configuration"
-			},
-			{
-				"command": "rdfusion.groupBySubject",
-				"title": "RDFusion: Group By Subject",
-				"enablement": "editorLangId == turtle"
-			},
-			{
-				"command": "rdfusion.filterTriples",
-				"title": "RDFusion: Filter Triples By Subject-Predicate-Object"
-			},
-			{
-				"command": "rdfusion.filterTriplesBySubject",
-				"title": "RDFusion: Filter Triples By Subject Only"
-			},
-			{
-				"command": "rdfusion.filterTriplesByPredicate",
-				"title": "RDFusion: Filter Triples By Predicate Only"
-			},
-			{
-				"command": "rdfusion.filterTriplesByObject",
-				"title": "RDFusion: Filter Triples By Object Only"
-			},
-			{
-				"command": "rdfusion.frameJsonld",
-				"title": "RDFusion: Frame JSON-LD From Template",
-				"enablement": "editorLangId == jsonld"
-			},
-			{
-				"command": "rdfusion.toggleIriShorten",
-				"title": "RDFusion: Toggle IRI Shortening",
-				"enablement": "editorLangId == turtle"
-			},
-			{
-				"command": "rdfusion.setIriMaxLength",
-				"title": "RDFusion: Set IRI Shorten Length",
-				"enablement": "editorLangId == turtle"
-			},
-			{
-				"command": "rdfusion.toggleOneIri",
-				"title": "RDFusion: Toggle One IRI",
-				"when": "false"
-			},
-			{
-				"command": "rdfusion.generateVoID",
-				"title": "RDFusion: Generate VoID"
-			},
-			{
-				"command": "rdfusion.mergeFiles",
-				"title": "RDFusion: Merge Files"
-			},
-			{
-				"command": "rdfusion.sortBySubjectAsc",
-				"title": "RDFusion: Sort Triples by Subject Ascending",
-				"enablement": "editorLangId == turtle"
-			},
-			{
-				"command": "rdfusion.sortByPredicateAsc",
-				"title": "RDFusion: Sort Predicates within Subject Ascending",
-				"enablement": "editorLangId == turtle"
-			},
-			{
-				"command": "rdfusion.sortBySubjectDesc",
-				"title": "RDFusion: Sort Triples by Subject Descending",
-				"enablement": "editorLangId == turtle"
-			},
-			{
-				"command": "rdfusion.sortByPredicateDesc",
-				"title": "RDFusion: Sort Predicates within Subject Descending",
-				"enablement": "editorLangId == turtle"
-			},
-			{
-				"command": "rdfusion.compareWithHEAD",
-				"title": "RDFusion: RDF Diff Compare with HEAD",
-				"icon": {
-					"light": "resources/logo.png",
-					"dark": "resources/logo.png"
-				}
-			},
-			{
-				"command": "rdfusion.compareWithRef",
-				"title": "RDFusion: RDF Diff Compare with Ref…"
-			},
-			{
-				"command": "rdfusion.compactJsonld",
-				"title": "RDFusion: Compact JSON-LD",
-				"enablement": "editorLangId == jsonld"
-			},
-			{
-				"command": "rdfusion.expandJsonld",
-				"title": "RDFusion: Expand JSON-LD",
-				"enablement": "editorLangId == jsonld"
-			},
-			{
-				"command": "rdfusion.flattenJsonld",
-				"title": "RDFusion: Flatten JSON-LD",
-				"enablement": "editorLangId == jsonld"
-			},
-			{
-				"command": "jsonld.applyPrefixAndRename",
-				"title": "JSON-LD: Apply Prefix and Rename",
-				"when": "false"
-			},
-			{
-				"command": "rdfusion.encodeTurtleUnicodeEscapes",
-				"title": "RDFusion: Encode Turtle Unicode Escapes",
-				"enablement": "editorLangId == turtle"
-			},
-			{
-				"command": "rdfusion.decodeTurtleUnicodeEscapes",
-				"title": "RDFusion: Decode Turtle Unicode Escapes",
-				"enablement": "editorLangId == turtle"
-			}
-		],
-		"menus": {
-			"commandPalette": [
-				{
-					"command": "rdfusion.openFile",
-					"when": "false"
-				},
-				{
-					"command": "rdfusion.toggleOneIri",
-					"when": "false"
-				},
-				{
-					"command": "rdfusion.refreshExplorer",
-					"when": "false"
-				}
-			],
-			"view/item/context": [
-				{
-					"command": "rdfusion.mergeFiles",
-					"when": "view == fileExplorer && viewItem == file",
-					"group": "navigation"
-				}
-			],
-			"explorer/context": [
-				{
-					"command": "rdfusion.mergeFiles",
-					"when": "resourceExtname =~ /\\.(ttl|jsonld)$/i",
-					"group": "navigation"
-				}
-			],
-			"scm/resourceState/context": [
-				{
-					"command": "rdfusion.compareWithHEAD",
-					"group": "inline@2",
-					"when": "scmProvider == git && resourceExtname == .ttl"
-				}
-			]
-		},
-		"configuration": {
-			"title": "RDFusion",
-			"properties": {
-				"rdfusion.turtle.validations.xsdTypeCheck": {
-					"type": "boolean",
-					"default": true,
-					"description": "Enable xsd type check validation"
-				},
-				"rdfusion.turtle.validations.missingTagCheck": {
-					"type": "boolean",
-					"label": "Enable checking missing language tag or datatype ",
-					"default": true,
-					"description": "Enable checking missing language tag or datatype"
-				},
-				"rdfusion.turtle.validations.shaclConstraint": {
-					"type": "boolean",
-					"default": true,
-					"description": "Enable shacl validation"
-				},
-				"rdfusion.turtle.validations.duplicateTriple": {
-					"type": "boolean",
-					"default": true,
-					"description": "Enable duplicate triple validation"
-				},
-				"rdfusion.turtle.autocomplete.localBased": {
-					"type": "boolean",
-					"default": true,
-					"description": "Enable local terms autocomplete"
-				},
-				"rdfusion.turtle.autocomplete.remoteBased": {
-					"type": "boolean",
-					"default": true,
-					"description": "Enable remote terms autocomplete"
-				},
-				"rdfusion.turtle.autocomplete.prefixDeclaration": {
-					"type": "boolean",
-					"default": true,
-					"description": "Enable declaring unimported prefix"
-				},
-				"rdfusion.jsonld.validations.duplicateId": {
-					"type": "boolean",
-					"default": true,
-					"description": "Warning on repeated @id"
-				},
-				"rdfusion.jsonld.validations.missingType": {
-					"type": "boolean",
-					"default": true,
-					"description": "Warning on nodes without explicit @type"
-				},
-				"rdfusion.jsonld.validations.undefinedPrefix": {
-					"type": "boolean",
-					"default": true,
-					"description": "Warning on usage of prefixes not in the context"
-				},
-				"rdfusion.jsonld.validations.missingTagCheck": {
-					"type": "boolean",
-					"default": true,
-					"description": "Warning on missing @type/@language for @value"
-				},
-				"rdfusion.jsonld.validations.xsdTypeCheck": {
-					"type": "boolean",
-					"default": true,
-					"description": "XSD-Datatype validation"
-				},
-				"rdfusion.jsonld.validations.emptyLiteral": {
-					"type": "boolean",
-					"default": true,
-					"description": "Warning on empty string literals"
-				},
-				"rdfusion.jsonld.validations.nonStringLiteral": {
-					"type": "boolean",
-					"default": true,
-					"description": "Warning on literals missing datatype or language"
-				},
-				"rdfusion.jsonld.validations.shaclConstraint": {
-					"type": "boolean",
-					"default": true,
-					"description": "SHACL constraint enforcement"
-				},
-				"rdfusion.jsonld.validations.duplicateTriple": {
-					"type": "boolean",
-					"default": true,
-					"description": "Enable duplicate triple validation"
-				},
-				"rdfusion.jsonld.autocomplete.localBased": {
-					"type": "boolean",
-					"default": true,
-					"description": "Enable local terms autocomplete"
-				},
-				"rdfusion.jsonld.autocomplete.remoteBased": {
-					"type": "boolean",
-					"default": true,
-					"description": "Enable syntax validation"
-				},
-				"rdfusion.jsonld.autocomplete.prefixDeclaration": {
-					"type": "boolean",
-					"default": true,
-					"description": "Enable naming validation"
-				},
-				"rdfusion.turtle.irishorten.enabled": {
-					"type": "boolean",
-					"default": false,
-					"description": "Enable automatic IRI shortening in Turtle."
-				},
-				"rdfusion.turtle.irishorten.maxLength": {
-					"type": "number",
-					"default": 30,
-					"minimum": 7,
-					"description": "Maximum IRI length before collapsing."
-				},
-				"rdfusion.turtle.formatting.breakSubject": {
-					"type": "boolean",
-					"default": true,
-					"description": "Place subject on its own line"
-				},
-				"rdfusion.turtle.formatting.blankLineBetweenSubjects": {
-					"type": "boolean",
-					"default": true,
-					"description": "Insert extra blank line between subject blocks"
-				},
-				"rdfusion.turtle.formatting.breakPredicates": {
-					"type": "boolean",
-					"default": true,
-					"description": "Place each predicate-object pair on its own line"
-				},
-				"rdfusion.turtle.formatting.breakObjects": {
-					"type": "boolean",
-					"default": false,
-					"description": "Split comma-separated object lists across lines"
-				},
-				"rdfusion.turtle.formatting.useKnownPrefixes": {
-					"type": "boolean",
-					"default": true,
-					"description": "Refactor full IRIs into prefix form if known"
-				},
-				"rdfusion.turtle.formatting.compactSingletonLists": {
-					"type": "boolean",
-					"default": true,
-					"description": "Render single-element lists as “(item)”"
-				},
-				"rdfusion.turtle.formatting.indentSize": {
-					"type": "number",
-					"default": 2,
-					"description": "Spaces per indent level for predicate lines"
-				},
-				"rdfusion.turtle.formatting.useUntypedNumeric": {
-					"type": "boolean",
-					"default": true,
-					"description": "Emit numeric/boolean literals untyped"
-				},
-				"rdfusion.turtle.formatting.breakPredObj": {
-					"type": "boolean",
-					"default": false,
-					"description": "Align predicates and objects in columns"
-				},
-				"rdfusion.common.validations.iriSchemeCheck": {
-					"type": "boolean",
-					"default": true,
-					"description": "Check for non-standard or uncommon IRI schemes"
-				},
-				"rdfusion.common.validations.strictSchemeCheck": {
-					"type": "boolean",
-					"default": false,
-					"description": "Enable strict mode to only allow custom defined IRI schemes"
-				},
-				"rdfusion.common.validations.customIriScheme": {
-					"type": "string",
-					"default": "http, https, mailto, tel",
-					"description": "Define a custom comma-separated whitelist of allowed IRI schemes"
-				}
-			}
-		}
-	},
-	"scripts": {
-		"build:server": "esbuild ./server/src/server.ts --bundle --platform=node --format=cjs --outfile=out/server.js --external:ky-universal --external:vscode --minify",
-		"build:client": "esbuild ./client/src/extension.ts --bundle --platform=node --target=node16 --outfile=out/extension.js --external:vscode --minify",
-		"build": "npm run build:client && npm run build:server",
-		"prepackage": "npm run build",
-		"package": "vsce package --dependencies -o rdfusion-1.0.6.vsix",
-		"compile": "tsc -b",
-		"watch": "tsc -b -w",
-		"lint": "eslint",
-		"test": "sh ./scripts/e2e.sh",
-		"test:watch": "vitest",
-		"test:server": "vitest --config vitest.config.ts --dir ./server/src/test",
-		"test:coverage": "vitest run --coverage"
-	},
-	"devDependencies": {
-		"@eslint/js": "^9.13.0",
-		"@stylistic/eslint-plugin": "^2.9.0",
-		"@types/mocha": "^10.0.6",
-		"@types/node": "^20",
-		"@types/rdf-ext": "^2.5.2",
-		"@vitest/coverage-v8": "^3.2.4",
-		"electron-rebuild": "^3.2.9",
-		"esbuild": "^0.25.4",
-		"eslint": "^9.13.0",
-		"mocha": "^10.3.0",
-		"typescript": "^5.8.2",
-		"typescript-eslint": "^8.26.0"
-	},
-	"dependencies": {
-		"@comunica/query-sparql": "^4.0.2",
-		"@comunica/types": "^4.2.0",
-		"@rdfjs/data-model": "^2.1.0",
-		"@rdfjs/dataset": "^2.0.2",
-		"@rdfjs/parser-n3": "^2.1.0",
-		"@rdfjs/types": "^2.0.1",
-		"@types/node-fetch": "^2.6.12",
-		"@zazuko/env-node": "^3.0.0",
-		"bcp-47": "^2.1.0",
-		"glob": "^11.0.0",
-		"jsonc-parser": "^3.2.1",
-		"jsonld": "^8.3.3",
-		"ky-universal": "^0.12.0",
-		"lru-cache": "^11.1.0",
-		"millan": "^5.4.0",
-		"n3": "^1.24.2",
-		"node-fetch": "^3.3.2",
-		"node-fetch-cjs": "^3.3.2",
-		"rdf-canonize": "^4.0.1",
-		"rdf-dereference": "^4.0.0",
-		"rdf-ext": "^2.5.2",
-		"rdfjs-c14n": "^2.0.5",
-		"shacl-engine": "^1.0.2",
-		"undici": "^6.21.3",
-		"uri-js": "^4.4.1",
-		"vitest": "^3.2.4",
-		"vscode-languageclient": "^9.0.1",
-		"vscode-languageserver": "^9.0.1",
-		"vscode-languageserver-textdocument": "^1.0.11"
-	},
-	"extensionDependencies": [
-		"vscode.git"
-	]
+  "name": "rdfusion",
+  "description": "RDFusion brings RDF editing and validation directly into VS Code.",
+  "author": "RDFusion",
+  "license": "MIT",
+  "version": "1.1.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/abrhamyifterb/RDFusion"
+  },
+  "publisher": "RDFusion",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "icon": "resources/logo.png",
+  "categories": [],
+  "keywords": [
+    "rdf",
+    "turtle",
+    "jsonld",
+    "lsp"
+  ],
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "main": "out/extension.js",
+  "activationEvents": [
+    "onLanguage:turtle",
+    "onLanguage:jsonld",
+    "onView:scm",
+    "onCommand:rdfdiff.scm.refresh",
+    "onCommand:rdfusion.openShaclSelection",
+    "onCommand:rdfusion.openShaclCoverage"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "RDFusion",
+          "title": "RDFusion",
+          "icon": "resources/logo.png"
+        }
+      ]
+    },
+    "views": {
+      "RDFusion": [
+        {
+          "id": "fileExplorer",
+          "name": "Files"
+        }
+      ]
+    },
+    "languages": [
+      {
+        "id": "turtle",
+        "extensions": [
+          ".ttl"
+        ],
+        "aliases": [
+          "Turtle"
+        ]
+      },
+      {
+        "id": "jsonld",
+        "extensions": [
+          ".jsonld"
+        ],
+        "aliases": [
+          "JSON-LD",
+          "jsonld"
+        ]
+      }
+    ],
+    "grammars": [
+      {
+        "language": "jsonld",
+        "scopeName": "source.json",
+        "path": "./syntaxes/json.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "rdfusion.openFile",
+        "title": "RDFusion: Open File"
+      },
+      {
+        "command": "rdfusion.refreshExplorer",
+        "title": "RDFusion: Refresh Explorer"
+      },
+      {
+        "command": "rdfusion.openShaclSelection",
+        "title": "RDFusion: Configure SHACL Selection"
+      },
+      {
+        "command": "rdfusion.openShaclCoverage",
+        "title": "RDFusion: Show SHACL Coverage"
+      },
+      {
+        "command": "rdfusion.configureTurtleValidations",
+        "title": "RDFusion: Toggle Turtle Validations"
+      },
+      {
+        "command": "rdfusion.configureTurtleAutocomplete",
+        "title": "RDFusion: Toggle Turtle Autocomplete"
+      },
+      {
+        "command": "rdfusion.configureJsonldValidations",
+        "title": "RDFusion: Toggle JSON-LD Validations"
+      },
+      {
+        "command": "rdfusion.configureIriSchemeValidation",
+        "title": "RDFusion: IRI Scheme Validation Configuration"
+      },
+      {
+        "command": "rdfusion.formatTriples",
+        "title": "RDFusion: Turtle Formatter",
+        "enablement": "editorLangId == turtle"
+      },
+      {
+        "command": "rdfusion.configureTurtleFormatting",
+        "title": "RDFusion: Turtle Formatter Configuration"
+      },
+      {
+        "command": "rdfusion.groupBySubject",
+        "title": "RDFusion: Group By Subject",
+        "enablement": "editorLangId == turtle"
+      },
+      {
+        "command": "rdfusion.filterTriples",
+        "title": "RDFusion: Filter Triples By Subject-Predicate-Object",
+        "enablement": "editorLangId == turtle || editorLangId == jsonld"
+      },
+      {
+        "command": "rdfusion.filterTriplesBySubject",
+        "title": "RDFusion: Filter Triples By Subject Only",
+        "enablement": "editorLangId == turtle || editorLangId == jsonld"
+      },
+      {
+        "command": "rdfusion.filterTriplesByPredicate",
+        "title": "RDFusion: Filter Triples By Predicate Only",
+        "enablement": "editorLangId == turtle || editorLangId == jsonld"
+      },
+      {
+        "command": "rdfusion.filterTriplesByObject",
+        "title": "RDFusion: Filter Triples By Object Only",
+        "enablement": "editorLangId == turtle || editorLangId == jsonld"
+      },
+      {
+        "command": "rdfusion.frameJsonld",
+        "title": "RDFusion: Frame JSON-LD From Template",
+        "enablement": "editorLangId == jsonld"
+      },
+      {
+        "command": "rdfusion.toggleIriShorten",
+        "title": "RDFusion: Toggle IRI Shortening",
+        "enablement": "editorLangId == turtle"
+      },
+      {
+        "command": "rdfusion.setIriMaxLength",
+        "title": "RDFusion: Set IRI Shorten Length",
+        "enablement": "editorLangId == turtle"
+      },
+      {
+        "command": "rdfusion.toggleOneIri",
+        "title": "RDFusion: Toggle One IRI",
+        "when": "false"
+      },
+      {
+        "command": "rdfusion.generateVoID",
+        "title": "RDFusion: Generate VoID",
+        "enablement": "editorLangId == turtle || editorLangId == jsonld"
+      },
+      {
+        "command": "rdfusion.mergeFiles",
+        "title": "RDFusion: Merge Files"
+      },
+      {
+        "command": "rdfusion.sortBySubjectAsc",
+        "title": "RDFusion: Sort Triples by Subject Ascending",
+        "enablement": "editorLangId == turtle"
+      },
+      {
+        "command": "rdfusion.sortByPredicateAsc",
+        "title": "RDFusion: Sort Predicates within Subject Ascending",
+        "enablement": "editorLangId == turtle"
+      },
+      {
+        "command": "rdfusion.sortBySubjectDesc",
+        "title": "RDFusion: Sort Triples by Subject Descending",
+        "enablement": "editorLangId == turtle"
+      },
+      {
+        "command": "rdfusion.sortByPredicateDesc",
+        "title": "RDFusion: Sort Predicates within Subject Descending",
+        "enablement": "editorLangId == turtle"
+      },
+      {
+        "command": "rdfusion.compareWithHEAD",
+        "title": "RDFusion: RDF Diff Compare with HEAD",
+        "icon": {
+          "light": "resources/logo.png",
+          "dark": "resources/logo.png"
+        },
+        "enablement": "editorLangId == turtle"
+      },
+      {
+        "command": "rdfusion.compareWithRef",
+        "title": "RDFusion: RDF Diff Compare with Ref\u2026",
+        "enablement": "editorLangId == turtle"
+      },
+      {
+        "command": "rdfusion.compactJsonld",
+        "title": "RDFusion: Compact JSON-LD",
+        "enablement": "editorLangId == jsonld"
+      },
+      {
+        "command": "rdfusion.expandJsonld",
+        "title": "RDFusion: Expand JSON-LD",
+        "enablement": "editorLangId == jsonld"
+      },
+      {
+        "command": "rdfusion.flattenJsonld",
+        "title": "RDFusion: Flatten JSON-LD",
+        "enablement": "editorLangId == jsonld"
+      },
+      {
+        "command": "jsonld.applyPrefixAndRename",
+        "title": "JSON-LD: Apply Prefix and Rename",
+        "when": "false"
+      },
+      {
+        "command": "rdfusion.encodeTurtleUnicodeEscapes",
+        "title": "RDFusion: Encode Turtle Unicode Escapes",
+        "enablement": "editorLangId == turtle"
+      },
+      {
+        "command": "rdfusion.decodeTurtleUnicodeEscapes",
+        "title": "RDFusion: Decode Turtle Unicode Escapes",
+        "enablement": "editorLangId == turtle"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "rdfusion.openFile",
+          "when": "false"
+        },
+        {
+          "command": "rdfusion.toggleOneIri",
+          "when": "false"
+        },
+        {
+          "command": "rdfusion.refreshExplorer",
+          "when": "false"
+        },
+        {
+          "command": "jsonld.applyPrefixAndRename",
+          "when": "false"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "rdfusion.mergeFiles",
+          "when": "view == fileExplorer && viewItem == file",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "rdfusion.mergeFiles",
+          "when": "resourceExtname =~ /\\.(ttl|jsonld)$/i",
+          "group": "navigation"
+        }
+      ],
+      "scm/resourceState/context": [
+        {
+          "command": "rdfusion.compareWithHEAD",
+          "group": "inline@2",
+          "when": "scmProvider == git && resourceExtname == .ttl"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "RDFusion",
+      "properties": {
+        "rdfusion.turtle.validations.xsdTypeCheck": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable XSD datatype validation"
+        },
+        "rdfusion.turtle.validations.missingTagCheck": {
+          "type": "boolean",
+          "label": "Check for missing language tags or datatypes",
+          "default": true,
+          "description": "Check for missing language tags or datatypes"
+        },
+        "rdfusion.turtle.validations.shaclConstraint": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable SHACL validation"
+        },
+        "rdfusion.turtle.validations.duplicateTriple": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable duplicate triple validation"
+        },
+        "rdfusion.turtle.validations.remoteTermVocabulary": {
+          "type": "boolean",
+          "default": true,
+          "description": "Suggest quick fixes for likely typos in known remote vocabulary terms. Warnings are shown only when close matches are available."
+        },
+        "rdfusion.turtle.autocomplete.localBased": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable local term completion"
+        },
+        "rdfusion.turtle.autocomplete.remoteBased": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable remote vocabulary term completion"
+        },
+        "rdfusion.turtle.autocomplete.prefixDeclaration": {
+          "type": "boolean",
+          "default": true,
+          "description": "Suggest declarations for undeclared prefixes"
+        },
+        "rdfusion.jsonld.validations.duplicateId": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn when @id values are repeated"
+        },
+        "rdfusion.jsonld.validations.missingType": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn when nodes are missing @type"
+        },
+        "rdfusion.jsonld.validations.undefinedPrefix": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn when prefixes are not defined in @context"
+        },
+        "rdfusion.jsonld.validations.missingTagCheck": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn when @value lacks @type or @language"
+        },
+        "rdfusion.jsonld.validations.xsdTypeCheck": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable XSD datatype validation"
+        },
+        "rdfusion.jsonld.validations.emptyLiteral": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn on empty string literals"
+        },
+        "rdfusion.jsonld.validations.nonStringLiteral": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn when JSON-LD literal values are not strings"
+        },
+        "rdfusion.jsonld.validations.shaclConstraint": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable SHACL validation"
+        },
+        "rdfusion.jsonld.validations.duplicateTriple": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable duplicate triple validation"
+        },
+        "rdfusion.jsonld.validations.remoteTermVocabulary": {
+          "type": "boolean",
+          "default": true,
+          "description": "Suggest quick fixes for likely typos in known JSON-LD compact IRI terms. Warnings are shown only when close matches are available."
+        },
+        "rdfusion.jsonld.autocomplete.localBased": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable local term completion"
+        },
+        "rdfusion.jsonld.autocomplete.remoteBased": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable remote vocabulary term completion"
+        },
+        "rdfusion.jsonld.autocomplete.prefixDeclaration": {
+          "type": "boolean",
+          "default": true,
+          "description": "Suggest declarations for undeclared prefixes or context terms"
+        },
+        "rdfusion.turtle.irishorten.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable automatic IRI shortening in Turtle."
+        },
+        "rdfusion.turtle.irishorten.maxLength": {
+          "type": "number",
+          "default": 30,
+          "minimum": 7,
+          "description": "Maximum IRI length before visual shortening is applied."
+        },
+        "rdfusion.turtle.formatting.breakSubject": {
+          "type": "boolean",
+          "default": true,
+          "description": "Place subject on its own line"
+        },
+        "rdfusion.turtle.formatting.blankLineBetweenSubjects": {
+          "type": "boolean",
+          "default": true,
+          "description": "Insert extra blank line between subject blocks"
+        },
+        "rdfusion.turtle.formatting.breakPredicates": {
+          "type": "boolean",
+          "default": true,
+          "description": "Place each predicate-object pair on its own line"
+        },
+        "rdfusion.turtle.formatting.breakObjects": {
+          "type": "boolean",
+          "default": false,
+          "description": "Split comma-separated object lists across lines"
+        },
+        "rdfusion.turtle.formatting.useKnownPrefixes": {
+          "type": "boolean",
+          "default": true,
+          "description": "Refactor full IRIs into prefix form if known"
+        },
+        "rdfusion.turtle.formatting.compactSingletonLists": {
+          "type": "boolean",
+          "default": true,
+          "description": "Render single-element lists as \u201c(item)\u201d"
+        },
+        "rdfusion.turtle.formatting.indentSize": {
+          "type": "number",
+          "default": 2,
+          "description": "Spaces per indent level for predicate lines"
+        },
+        "rdfusion.turtle.formatting.useUntypedNumeric": {
+          "type": "boolean",
+          "default": true,
+          "description": "Emit numeric and boolean literals without explicit datatypes"
+        },
+        "rdfusion.turtle.formatting.breakPredObj": {
+          "type": "boolean",
+          "default": false,
+          "description": "Align predicate-object lists in columns"
+        },
+        "rdfusion.common.validations.iriSchemeCheck": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check for uncommon or unregistered IRI schemes"
+        },
+        "rdfusion.common.validations.strictSchemeCheck": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use only the custom allowed IRI schemes"
+        },
+        "rdfusion.common.validations.customIriScheme": {
+          "type": "string",
+          "default": "http, https, mailto, tel",
+          "description": "Allowed IRI schemes, comma-separated"
+        },
+        "rdfusion.shacl.selection": {
+          "type": "object",
+          "default": {
+            "mode": "auto"
+          },
+          "markdownDescription": "SHACL validation selection. Use `auto` to apply all indexed SHACL shapes, or `custom` to apply selected shape/target/property constraints.",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "auto",
+                "custom"
+              ],
+              "default": "auto"
+            },
+            "custom": {
+              "type": "object",
+              "default": {
+                "files": []
+              }
+            }
+          }
+        },
+        "rdfusion.performance.trace": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Enable detailed RDFusion performance tracing in the language-server output. Keep disabled unless you are profiling indexing, parsing, SHACL listing, or validation latency."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build:server": "esbuild ./server/src/server.ts --bundle --platform=node --format=cjs --outfile=out/server.js --external:ky-universal --external:vscode --minify",
+    "build:client": "esbuild ./client/src/extension.ts --bundle --platform=node --target=node16 --outfile=out/extension.js --external:vscode --minify",
+    "build": "npm run build:client && npm run build:server",
+    "prepackage": "npm run build",
+    "package": "vsce package --dependencies",
+    "compile": "tsc -b",
+    "watch": "tsc -b -w",
+    "lint": "eslint",
+    "test": "sh ./scripts/e2e.sh",
+    "test:watch": "vitest",
+    "test:server": "vitest run --config vitest.config.ts --dir ./server/src/test",
+    "test:coverage": "vitest run --coverage",
+    "test:perf": "vitest --config vitest.perf.config.ts --run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "@stylistic/eslint-plugin": "^2.9.0",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20",
+    "@types/rdf-ext": "^2.5.2",
+    "@vitest/coverage-v8": "^3.2.4",
+    "electron-rebuild": "^3.2.9",
+    "esbuild": "^0.25.4",
+    "eslint": "^9.13.0",
+    "mocha": "^10.3.0",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.26.0"
+  },
+  "dependencies": {
+    "@comunica/query-sparql": "^4.0.2",
+    "@comunica/types": "^4.2.0",
+    "@rdfjs/data-model": "^2.1.0",
+    "@rdfjs/dataset": "^2.0.2",
+    "@rdfjs/parser-n3": "^2.1.0",
+    "@rdfjs/types": "^2.0.1",
+    "@types/node-fetch": "^2.6.12",
+    "@zazuko/env-node": "^3.0.0",
+    "bcp-47": "^2.1.0",
+    "glob": "^11.0.0",
+    "jsonc-parser": "^3.2.1",
+    "jsonld": "^8.3.3",
+    "ky-universal": "^0.12.0",
+    "lru-cache": "^11.1.0",
+    "millan": "^5.4.0",
+    "n3": "^1.24.2",
+    "node-fetch": "^3.3.2",
+    "node-fetch-cjs": "^3.3.2",
+    "rdf-canonize": "^4.0.1",
+    "rdf-dereference": "^4.0.0",
+    "rdf-ext": "^2.5.2",
+    "rdfjs-c14n": "^2.0.5",
+    "shacl-engine": "^1.0.2",
+    "undici": "^6.21.3",
+    "uri-js": "^4.4.1",
+    "vitest": "^3.2.4",
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.11"
+  },
+  "extensionDependencies": [
+    "vscode.git"
+  ]
 }
