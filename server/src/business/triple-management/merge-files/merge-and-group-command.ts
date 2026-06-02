@@ -23,8 +23,8 @@ export class MergeGroupCommand {
 			return mergedGrouped;
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		} catch (err: any) {
-			this.connection.window.showErrorMessage(`[Merge] Failed to process: ${err.message || err.toString()}`);
-			console.error(`[Merge] Failed to process: ${err.message || err.toString()}`);
+			this.connection.window.showErrorMessage(`[Merge] Failed to merge RDF files: ${err.message || err.toString()}`);
+			console.error(`[Merge] Failed to merge RDF files: ${err.message || err.toString()}`);
 			return '';
 		}
 	}

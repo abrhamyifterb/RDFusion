@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
-	Connection, TextEdit, Range, Position, TextDocuments
+	Connection, TextEdit, TextDocuments
 } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
@@ -11,6 +11,7 @@ import { JsonldParsedGraph } from '../../../../data/irdf-parser';
 import { DataManager } from '../../../../data/data-manager';
 import { PrefixRegistry } from '../../../autocomplete/prefix/prefix-registry';
 import { getSharedDocumentLoader } from '../../../../data/jsonld/auto-document-loader';
+import { fullDocumentRange, getParsedGraphForCommand } from '../../parsed-document-helper.js';
 
 export class JsonLdDifferentModesCommand {
 	constructor(
@@ -23,14 +24,18 @@ export class JsonLdDifferentModesCommand {
 	public async execute(args: { uri: string; mode: string }): Promise<void> {
 		try {
 		const { uri } = args;
-		const parsed = this.dataManager.getParsedData(uri) as JsonldParsedGraph | undefined;
+		const parsed = await getParsedGraphForCommand(this.dataManager, this.documents, uri) as JsonldParsedGraph | undefined;
 		if (!parsed) {
-			this.connection.console.error(`[JSON-LD Formatting] No parsed data for ${uri}`);
+			this.connection.console.error(`[JSON-LD] Could not process because no parsed JSON-LD data is available for ${uri}`);
 			return;
 		}
 
 		const doc = this.documents.get(uri);
 		if (!doc) return;
+		if (doc.languageId !== 'jsonld') {
+			this.connection.window.showWarningMessage('JSON-LD processing commands require a JSON-LD document.');
+			return;
+		}
 
 		const text = doc.getText();
 		const inputJson = parse(text, [], { allowTrailingComma: true, disallowComments: false });
@@ -72,12 +77,7 @@ export class JsonLdDifferentModesCommand {
 			}
 		}
 
-		const lastLine = Math.max(0, doc.lineCount - 1);
-		const lastCol  = doc.getText().split('\n').pop()!.length;
-		const fullRange: Range = {
-			start: Position.create(0, 0),
-			end:   Position.create(lastLine, lastCol)
-		};
+		const fullRange = fullDocumentRange(doc);
 
 		await this.connection.workspace.applyEdit({
 			changes: { [uri]: [TextEdit.replace(fullRange, formattedText)] }

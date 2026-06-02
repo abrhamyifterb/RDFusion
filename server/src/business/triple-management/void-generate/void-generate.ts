@@ -1,12 +1,13 @@
 import { JsonldParsedGraph, ParsedGraph } from '../../../data/irdf-parser';
+import { RDF_TYPE } from '../../../data/rdf/rdf-vocabulary';
 
 export class VoIDGenerator {
 	public generateVoID(parsed: ParsedGraph | JsonldParsedGraph): string {
 		const quads = parsed.quads;
 
-		const title = "Auto Generated VoID Title (Change based on data)";
-		const description = "Auto Generated VoID description (Change based on data).";
-		const created = new Date().toISOString().split('T')[0];;
+		const title = "Generated VoID dataset summary";
+		const description = "VoID metadata generated from the current RDF document.";
+		const created = new Date().toISOString().split('T')[0];
 
 		const tripleCount = quads.length;
 		const subjects = new Set<string>();
@@ -34,7 +35,7 @@ export class VoIDGenerator {
 			objects.add(obj);
 			predicates.set(pre, (predicates.get(pre) || 0) + 1);
 
-			if (pre === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type') {
+			if (pre === RDF_TYPE) {
 				if (!classMap.has(obj)) classMap.set(obj, new Set());
 				classMap.get(obj)!.add(sub);
 			}

@@ -40,7 +40,7 @@ export class UnicodeEscapesCommand {
 		});
 		} catch (error: any) {
 		this.connection.console.error(
-			`[Unicode Escapes] Failed: ${error?.message ?? String(error)}`
+			`[Unicode Escapes] Could not transform Turtle Unicode escapes: ${error?.message ?? String(error)}`
 		);
 		}
 	}

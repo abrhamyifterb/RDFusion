@@ -1,15 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Connection } from 'vscode-languageserver';
+import { Connection, TextDocuments } from 'vscode-languageserver';
 import { DataManager } from '../../../data/data-manager';
 import { JsonldParsedGraph, ParsedGraph } from '../../../data/irdf-parser';
 import { FilterQuads } from './turtle/filter-triples';
 import { TurtleFilterCommand } from './turtle/turtle-filter-command';
 import { JsonldFilterCommand } from './jsonld/jsonld-filter-command';
+import { TextDocument } from 'vscode-languageserver-textdocument';
+import { getParsedGraphForCommand, hasParseDiagnostics } from '../parsed-document-helper.js';
 
 export class FilterTriplesCommand {
 	constructor(
 		private dataManager: DataManager,
 		private connection:  Connection,
+		private documents?: TextDocuments<TextDocument>,
 	) {}
 
 	public async execute(args: {
@@ -32,15 +35,17 @@ export class FilterTriplesCommand {
 				return "";
 			}
 
-			const parsed = this.dataManager.getParsedData(uri) as ParsedGraph | JsonldParsedGraph | undefined;
+			const parsed = this.documents
+				? await getParsedGraphForCommand(this.dataManager, this.documents, uri) as ParsedGraph | JsonldParsedGraph | undefined
+				: this.dataManager.getGraphSnapshot(uri) as ParsedGraph | JsonldParsedGraph | undefined;
 			
 			if (!parsed) {
-				this.connection.console.error(`[Filter] No parsed data for ${uri}`);
+				this.connection.console.error(`[Filter] Could not filter because no parsed RDF data is available for ${uri}`);
 				return '';
 			}
 
-			if (('errors' in parsed && parsed.errors?.length) || ('diagnostics' in parsed && parsed.diagnostics.length)) {
-				this.connection.console.error(`[Filter] Error during parsing data for ${uri}`);
+			if (hasParseDiagnostics(parsed)) {
+				this.connection.console.error(`[Filter] Could not filter because the RDF document has parse errors: ${uri}`);
 				return '';
 			}
 
@@ -78,8 +83,8 @@ export class FilterTriplesCommand {
 			}
 			
 		} catch (error:any)	{
-			this.connection.console.error(`[Filter] Failed to process:  ${error.message || error.toString()}`);
-			console.error(`[Filter] Failed to process:  ${error.message || error.toString()}`);
+			this.connection.console.error(`[Filter] Failed to filter triples: ${error.message || error.toString()}`);
+			console.error(`[Filter] Failed to filter triples: ${error.message || error.toString()}`);
 			return '';
 		}
 	}

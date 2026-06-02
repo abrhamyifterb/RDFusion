@@ -1,13 +1,9 @@
-import { Connection, 
-	TextEdit, 
-	Range, 
-	Position, 
-	TextDocuments 
-} from 'vscode-languageserver';
+import { Connection, TextEdit, TextDocuments } from 'vscode-languageserver';
 import { DataManager } from '../../../data/data-manager';
 import { ParsedGraph } from '../../../data/irdf-parser';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { SortFormatter } from './sort-formatter';
+import { fullDocumentRange, getParsedGraphForCommand, hasParseDiagnostics } from '../parsed-document-helper.js';
 
 export class SortTriplesCommand {
 	constructor(
@@ -19,14 +15,14 @@ export class SortTriplesCommand {
 	public async execute(args: { uri: string, mode: string, direction: string }): Promise<void> {
 		try {
 			const uri    = args.uri;
-			const parsed = this.dataManager.getParsedData(uri) as ParsedGraph | undefined;
+			const parsed = await getParsedGraphForCommand(this.dataManager, this.documents, uri) as ParsedGraph | undefined;
 			if (!parsed) {
-				this.connection.console.error(`[Sort Triples] No parsed data for ${uri}`);
+				this.connection.console.error(`[Sort Triples] Could not sort because no parsed RDF data is available for ${uri}`);
 				return;
 			}
 
-			if (('errors' in parsed && parsed.errors?.length)) {
-				this.connection.console.error(`[Sort Triples] Error during parsing data for ${uri}`);
+			if (hasParseDiagnostics(parsed)) {
+				this.connection.console.error(`[Sort Triples] Could not sort because the RDF document has parse errors: ${uri}`);
 				return;
 			}
 			const sortFormatter = new SortFormatter();
@@ -34,18 +30,15 @@ export class SortTriplesCommand {
 
 			const doc = this.documents.get(uri);
 			if (!doc) return;
-			const fullRange: Range = {
-				start: Position.create(0, 0),
-				end:   Position.create(doc.lineCount - 1, doc.getText().split('\n').pop()!.length)
-			};
+			const fullRange = fullDocumentRange(doc);
 
 			await this.connection.workspace.applyEdit({
 				changes: { [uri]: [ TextEdit.replace(fullRange, await sortedText) ] }
 			});
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		} catch (error: any) {
-			this.connection.console.error(`[Sort Triples] Failed to process:  ${error.message || error.toString()}`);
-			console.error(`[Sort Triples] Failed to process: ${error.message || error.toString()}`);
+			this.connection.console.error(`[Sort Triples] Failed to sort triples: ${error.message || error.toString()}`);
+			console.error(`[Sort Triples] Failed to sort triples: ${error.message || error.toString()}`);
 			return;
 		}
 	}

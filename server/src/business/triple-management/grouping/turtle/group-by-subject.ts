@@ -2,12 +2,13 @@
 import { Term } from 'n3';
 import { JsonldParsedGraph, ParsedGraph } from '../../../../data/irdf-parser';
 import { SubjectIndex } from './subject-index.js';
+import { RDF_FIRST, RDF_NIL, RDF_REST, RDF_TYPE } from '../../../../data/rdf/rdf-vocabulary';
 
 const RDF = {
-  type:  'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
-  first: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#first',
-  rest:  'http://www.w3.org/1999/02/22-rdf-syntax-ns#rest',
-  nil:   'http://www.w3.org/1999/02/22-rdf-syntax-ns#nil'
+  type: RDF_TYPE,
+  first: RDF_FIRST,
+  rest: RDF_REST,
+  nil: RDF_NIL,
 };
 
 export class GroupFormatter {
