@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Quad, DataFactory } from 'n3';
+import { RDF_FIRST, RDF_NIL, RDF_REST, RDF_TYPE, XSD_NS } from '../rdf/rdf-vocabulary';
 const { namedNode, blankNode, literal, quad, defaultGraph } = DataFactory;
 
 function normalizeDatatype(dt: string): string {
-  const xsdNs = "http://www.w3.org/2001/XMLSchema#";
+  const xsdNs = XSD_NS;
   if (dt.toLowerCase().startsWith(xsdNs.toLowerCase())) {
     return xsdNs + dt.slice(xsdNs.length);
   }
@@ -33,8 +34,7 @@ export class TurtleCstToQuadsVisitor {
   }
 
   private newBlankNodeLabel(): string {
-    const randomPart = Math.random().toString(36).slice(2, 5);
-    return `b_${this.blankNodeCounter++}_${randomPart}`;
+    return `b_${this.blankNodeCounter++}`;
   }
 
   private getTokenPosition(token: any): Position {
@@ -148,14 +148,12 @@ export class TurtleCstToQuadsVisitor {
 
   private visitSubject(node: any): any {
     if (node.children.collection) {
-      // console.dir(`[GROUP] Subject node of Collection ${JSON.stringify(node.children.collection)}`);
       return this.visitCollection(node.children.collection[0]);
     }
     if (node.name === "collection") {
       return this.visitCollection(node);
     }
     if (node.children.blankNodePropertyList) {
-      // console.dir(`[GROUP] Subject node of propertylist ${JSON.stringify(node.children.blankNodePropertyList)}`);
       return this.visitBlankNodePropertyList(node.children.blankNodePropertyList[0]);
     }
     if (node.name === "blankNodePropertyList") {
@@ -167,7 +165,6 @@ export class TurtleCstToQuadsVisitor {
   private visitTriple(triple: any): void {
     try{
       const subjNode = triple.children.subject[0];
-      // console.dir(`[GROUP] Subject node modified lets see => ${JSON.stringify(subjNode)}`);
       const subject = this.visitSubject(subjNode);
       const pos = this.extractPosition(subjNode);
 
@@ -195,7 +192,7 @@ export class TurtleCstToQuadsVisitor {
     verbs.forEach((verbNode: any, idx: number) => {
       let predicate;
       if (verbNode.children.A) {
-        predicate = namedNode('http://www.w3.org/1999/02/22-rdf-syntax-ns#type');
+        predicate = namedNode(RDF_TYPE);
       } else if (verbNode.children.predicate) {
         predicate = this.extractTerm(verbNode.children.predicate[0]);
       } else {
@@ -306,25 +303,25 @@ export class TurtleCstToQuadsVisitor {
       items.push(this.extractTerm(objNode));
     }
   
-    const RDF_FIRST = namedNode("http://www.w3.org/1999/02/22-rdf-syntax-ns#first");
-    const RDF_REST  = namedNode("http://www.w3.org/1999/02/22-rdf-syntax-ns#rest");
-    const RDF_NIL   = namedNode("http://www.w3.org/1999/02/22-rdf-syntax-ns#nil");
+    const rdfFirst = namedNode(RDF_FIRST);
+    const rdfRest = namedNode(RDF_REST);
+    const rdfNil = namedNode(RDF_NIL);
   
-    if (items.length === 0) {return RDF_NIL as any;}
+    if (items.length === 0) {return rdfNil as any;}
   
     const head    = blankNode(this.newBlankNodeLabel());
     let current = head;
   
     items.forEach((obj, i) => {
-      let q = quad(current, RDF_FIRST, obj, defaultGraph());
+      let q = quad(current, rdfFirst, obj, defaultGraph());
       (q as any).positionToken = posTokens[i];
       this.quads.push(q);
   
       if (i === items.length - 1) {
-        q = quad(current, RDF_REST, RDF_NIL, defaultGraph());
+        q = quad(current, rdfRest, rdfNil, defaultGraph());
       } else {
         const next = blankNode(this.newBlankNodeLabel());
-        q = quad(current, RDF_REST, next, defaultGraph());
+        q = quad(current, rdfRest, next, defaultGraph());
         current = next;
       }
       (q as any).positionToken = posTokens[i];

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { getSharedDocumentLoader, RemoteDocument } from './auto-document-loader';
+import { isJsonLdGenDelim } from '../../utils/shared/jsonld/context-prefix';
 
 export interface TermDef {
   "@id"?: string | null;
@@ -71,7 +72,7 @@ export class ActiveContextResolver {
         else if (typeof item["@base"] === "string") acc.base = absolutize(item["@base"], base);
 
         if (item["@vocab"] === null) acc.vocab = undefined;
-        else if (typeof item["@vocab"] === "string") acc.vocab = absolutize(item["@vocab"], base);
+        else if (typeof item["@vocab"] === "string") acc.vocab = expandVocabMapping(item["@vocab"], item, acc, base);
 
         if (item["@language"] === null) acc.language = null;
         else if (typeof item["@language"] === "string") acc.language = item["@language"].toLowerCase();
@@ -116,10 +117,34 @@ function expandIri(value: string, ac: ResolvedContext, { vocab }: { vocab: boole
   if (vocab && ac.vocab) return ac.vocab + value;
   return absolutize(value, base ?? ac.base ?? undefined);
 }
+function expandVocabMapping(value: string, localContext: Record<string, any>, ac: ResolvedContext, base?: string | null): string {
+  const expanded = expandIri(value, ac, { vocab: true }, base);
+  if (expanded !== value) return expanded;
+
+  const colon = value.indexOf(':');
+  if (colon > 0) {
+    const prefix = value.slice(0, colon);
+    const suffix = value.slice(colon + 1);
+    const raw = localContext[prefix];
+    const prefixId = raw && typeof raw === 'object' && Object.prototype.hasOwnProperty.call(raw, '@id')
+      ? (raw['@id'] == null ? undefined : expandIri(String(raw['@id']), ac, { vocab: true }, base))
+      : typeof raw === 'string' ? expandIri(raw, ac, { vocab: true }, base)
+      : undefined;
+    if (isJsonLdImplicitPrefixMapping(prefix, prefixId) || raw?.['@prefix'] === true) {
+      return `${prefixId}${suffix}`;
+    }
+  }
+
+  return expanded;
+}
+
 function arr<T>(v: T | T[] | undefined): T[] | undefined { return v === undefined ? undefined : (Array.isArray(v) ? v : [v]); }
 function normalizeTermDef(term: string, raw: any, ac: ResolvedContext, base?: string | null): TermDef | null {
   if (raw == null) return { "@id": null };
-  if (typeof raw === "string") return { "@id": expandIri(raw, ac, { vocab: true }, base) };
+  if (typeof raw === "string") {
+    const id = expandIri(raw, ac, { vocab: true }, base);
+    return { "@id": id, "@prefix": isJsonLdImplicitPrefixMapping(term, id) };
+  }
   if (typeof raw !== "object") return null;
 
   let id: string | null | undefined;
@@ -143,12 +168,23 @@ function normalizeTermDef(term: string, raw: any, ac: ResolvedContext, base?: st
     ? (raw["@direction"] == null ? null : (raw["@direction"] === "rtl" ? "rtl" : "ltr"))
     : undefined;
 
+  const explicitPrefix = raw["@prefix"] === true ? true : raw["@prefix"] === false ? false : undefined;
+  const implicitPrefix = explicitPrefix === undefined && id ? isJsonLdImplicitPrefixMapping(term, id) : false;
+
   return {
     "@id": id, "@type": dtype, "@container": container, "@language": lang, "@direction": dir,
     "@index": typeof raw["@index"] === "string" ? raw["@index"] : undefined,
     "@reverse": raw["@reverse"] === true, "@context": raw["@context"],
-    "@protected": raw["@protected"] === true, "@prefix": raw["@prefix"] === true
+    "@protected": raw["@protected"] === true, "@prefix": explicitPrefix ?? implicitPrefix
   };
+}
+
+function isJsonLdImplicitPrefixMapping(term: string, iri: string | null | undefined): boolean {
+  return !!iri
+    && !term.includes(':')
+    && !term.includes('/')
+    && !iri.startsWith('@')
+    && (iri.startsWith('_:') || isJsonLdGenDelim(iri));
 }
 
 const store = new WeakMap<object, ResolvedContext>();

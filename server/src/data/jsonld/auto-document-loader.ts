@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { request, Agent, Dispatcher } from "undici";
 import { LRUCache } from "lru-cache";
@@ -58,12 +59,11 @@ function autoDetectOptionsFromVSCode(): LoaderOptions {
   let dispatcher: Dispatcher | undefined;
   let userAgent = "RDFusion-JSONLD/1.1 (+VSCode)";
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
     const vscode = require("vscode") as typeof import("vscode");
     const http = vscode.workspace.getConfiguration("http");
     strictSSL = http.get<boolean>("proxyStrictSSL", true);
     const proxy = http.get<string>("proxy");
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
+
     const u = require("undici");
     if (proxy && typeof u.ProxyAgent === "function") {
       dispatcher = new u.ProxyAgent(proxy);

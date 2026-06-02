@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { IRDFParser, ParsedGraph } from "../irdf-parser";
 import { TurtleCstToQuadsVisitor } from "./cst-to-quads-visitor.js";
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver/node.js';
@@ -42,7 +43,6 @@ export default class MillianRDFParser implements IRDFParser {
         errors: [...millianResult.errors, ...millianResult.semanticErrors],
       };
     } catch (error:unknown) {
-      // console.dir(`Millian parser error: => ${JSON.stringify(error)}`);
       console.error('Error while parsing:', error);
       const diagnostics: Diagnostic[] = [];
       
@@ -50,7 +50,6 @@ export default class MillianRDFParser implements IRDFParser {
         const errorMessage = error.message;
         const errorDetails = JSON.parse(errorMessage);
     
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         errorDetails.forEach((err: { name: string; message: string; token: any; }) => {
           const range: Range = {
             start: { line: err.token.startLine - 1, character: err.token.startColumn - 1 },
@@ -67,7 +66,6 @@ export default class MillianRDFParser implements IRDFParser {
       }
       // console.log(`Millian parser error: ${JSON.stringify(diagnostics)}`);
       return Promise.reject(new Error(`Millian parser error: ${JSON.stringify(diagnostics)}`));
-      //return Promise.reject(new Error("Millian parser error: " + error));
     }
   }
   

@@ -25,6 +25,10 @@ export interface JsonldParsedGraph {
   text: string;
   ast: Node;
   contextMap: Map<string,string>;
+  /** Terms from the active context that are valid compact IRI prefixes. */
+  prefixMap?: Map<string,string>;
+  /** Active context default vocabulary mapping, if any. */
+  vocab?: string;
   definitions: Definition[];
   quads: any[];
   diagnostics: Diagnostic[];

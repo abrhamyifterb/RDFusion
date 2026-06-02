@@ -1,33 +1,36 @@
 import { Node } from 'jsonc-parser';
 import { Extractor } from '../../../utils/shared/jsonld/iextractor';
-import { childAt } from '../../../utils/shared/jsonld/child-at';
+import { findJsonLdContextObjects, jsonStringNodeValue } from '../../../utils/shared/jsonld/context-prefix';
+
+function valueAsStringOrId(text: string, value: Node | undefined): string | undefined {
+	if (value?.type === 'string') {
+		return jsonStringNodeValue(text, value);
+	}
+	if (value?.type === 'object') {
+		for (const prop of value.children ?? []) {
+			if (prop.type !== 'property') continue;
+			if (jsonStringNodeValue(text, prop.children?.[0]) === '@id') {
+				return jsonStringNodeValue(text, prop.children?.[1]);
+			}
+		}
+	}
+	return undefined;
+}
 
 export class ContextExtractor implements Extractor<Map<string,string>> {
 	extract(ast: Node, text: string): Map<string,string> {
 		const map = new Map<string,string>();
-		const walk = (n: Node) => {
-		if (n?.type === 'property') {
-			const key = childAt(n, 0);
-			const val = childAt(n, 1);
-			if (
-			key && val &&
-			text.slice(key.offset, key.offset + key.length) === '"@context"' &&
-			val?.type === 'object'
-			) {
-			val.children?.forEach(entry => {
-				const termNode = childAt(entry, 0);
-				const uriNode  = childAt(entry, 1);
-				if (!termNode || !uriNode) {return;}
-				const term = text.slice(termNode?.offset+1, termNode?.offset+termNode.length-1);
-				let iri   = text.slice(uriNode?.offset+1, uriNode?.offset+uriNode.length-1);
-				if (iri.endsWith('/')) {iri = iri.slice(0,-1);}
-				map.set(term, iri);
-			});
+		for (const context of findJsonLdContextObjects(ast, text)) {
+			for (const entry of context.children ?? []) {
+				if (entry.type !== 'property') continue;
+				const term = jsonStringNodeValue(text, entry.children?.[0]);
+				if (!term || term.startsWith('@')) continue;
+				const iri = valueAsStringOrId(text, entry.children?.[1]);
+				if (iri !== undefined) {
+					map.set(term, iri);
+				}
 			}
 		}
-		n.children?.forEach(walk);
-		};
-		walk(ast);
 		return map;
 	}
 }

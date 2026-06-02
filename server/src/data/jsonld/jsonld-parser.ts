@@ -9,6 +9,7 @@ import { DefinitionExtractor } from "./definitions/definition-extractor";
 import { IdRangeBuilder } from "./id-range-builder";
 import { QuadPositionAttacher } from "./quad-positions/quad-position-attach";
 import { rangeFromOffsets } from "../../utils/shared/jsonld/range-from-offsets";
+import { findJsonLdDefaultVocab, findJsonLdPrefixNamespaces, isJsonLdPrefixTermDefinition } from "../../utils/shared/jsonld/context-prefix";
 
 import { ActiveContextResolver, setResolvedContext } from "./active-context-resolver";
 
@@ -53,16 +54,27 @@ export class JsonLdParser {
     }
 
     const localContextMap = this.contextExtractor.extract(ast, text);
+    const localPrefixMap = findJsonLdPrefixNamespaces(ast, text);
+    const localVocab = findJsonLdDefaultVocab(ast, text);
     const definitions     = this.definitionExtractor.extract(ast, text);
 
     let effectiveContextMap = localContextMap;
+    let effectivePrefixMap = localPrefixMap;
+    let effectiveVocab = localVocab;
 
     try {
 		const resolved = await this.activeCtxResolver.resolveForDocument(jsonObj);
 		effectiveContextMap = new Map<string, string>();
+		effectivePrefixMap = new Map<string, string>();
 		for (const [term, def] of resolved.terms) {
-			if (def["@id"] != null) effectiveContextMap.set(term, def["@id"]!);
+			if (def["@id"] != null) {
+				effectiveContextMap.set(term, def["@id"]!);
+				if (isJsonLdPrefixTermDefinition(term, def)) {
+					effectivePrefixMap.set(term, def["@id"]!);
+				}
+			}
 		}
+		effectiveVocab = resolved.vocab;
 		setResolvedContext(ast, resolved);
     } catch (err: any) {
 		diagnostics.push(
@@ -77,7 +89,7 @@ export class JsonLdParser {
 		setResolvedContext(ast, undefined);
     }
 
-    const idRanges = new IdRangeBuilder(localContextMap).extract(ast, text);
+    const idRanges = new IdRangeBuilder(effectivePrefixMap).extract(ast, text);
 
     const documentLoader = getSharedDocumentLoader();
 
@@ -116,6 +128,6 @@ export class JsonLdParser {
 
     new QuadPositionAttacher(idRanges).attach(quads);
 
-    return { text, ast, contextMap: effectiveContextMap, definitions, quads, diagnostics };
+    return { text, ast, contextMap: effectiveContextMap, prefixMap: effectivePrefixMap, vocab: effectiveVocab, definitions, quads, diagnostics };
 	}
 }

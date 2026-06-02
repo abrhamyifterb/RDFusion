@@ -20,10 +20,9 @@ export class IdRangeBuilder implements Extractor<Map<string,Range>> {
 			) {
 			const raw = text.slice(val.offset+1, val.offset+val.length-1);
 			const [pfx, loc] = raw.split(':',2);
-			let base = this.context.get(pfx) ?? pfx;
-			if (base.endsWith('/')) {base = base.slice(0,-1);}
+			const base = this.context.get(pfx);
 			let full: string;
-			try { full = new URL(`${base}/${loc}`).toString(); }
+			try { full = base ? new URL(`${base}${loc}`).toString() : raw; }
 			catch { full = raw; }
 			map.set(full, rangeFromOffsets(text, key.offset, key.offset+key.length));
 			}

@@ -1,0 +1,78 @@
+export const RDF_NS = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
+export const RDFS_NS = 'http://www.w3.org/2000/01/rdf-schema#';
+export const OWL_NS = 'http://www.w3.org/2002/07/owl#';
+export const XSD_NS = 'http://www.w3.org/2001/XMLSchema#';
+export const SKOS_NS = 'http://www.w3.org/2004/02/skos/core#';
+export const SH_NS = 'http://www.w3.org/ns/shacl#';
+export const FOAF_NS = 'http://xmlns.com/foaf/0.1/';
+export const SCHEMA_NS = 'http://schema.org/';
+export const DCTERMS_NS = 'http://purl.org/dc/terms/';
+export const DCAT_NS = 'http://www.w3.org/ns/dcat#';
+export const DC_NS = 'http://purl.org/dc/elements/1.1/';
+export const PROV_NS = 'http://www.w3.org/ns/prov#';
+export const VS_NS = 'http://www.w3.org/2003/06/sw-vocab-status/ns#';
+
+export const RDF_TYPE = `${RDF_NS}type`;
+export const RDF_PROPERTY = `${RDF_NS}Property`;
+export const RDF_FIRST = `${RDF_NS}first`;
+export const RDF_REST = `${RDF_NS}rest`;
+export const RDF_NIL = `${RDF_NS}nil`;
+
+export const RDFS_LABEL = `${RDFS_NS}label`;
+export const RDFS_COMMENT = `${RDFS_NS}comment`;
+export const RDFS_DOMAIN = `${RDFS_NS}domain`;
+export const RDFS_RANGE = `${RDFS_NS}range`;
+export const RDFS_CLASS = `${RDFS_NS}Class`;
+export const RDFS_SUB_CLASS_OF = `${RDFS_NS}subClassOf`;
+export const RDFS_SUB_PROPERTY_OF = `${RDFS_NS}subPropertyOf`;
+export const RDFS_SEE_ALSO = `${RDFS_NS}seeAlso`;
+export const RDFS_IS_DEFINED_BY = `${RDFS_NS}isDefinedBy`;
+
+export const OWL_CLASS = `${OWL_NS}Class`;
+export const OWL_OBJECT_PROPERTY = `${OWL_NS}ObjectProperty`;
+export const OWL_DATATYPE_PROPERTY = `${OWL_NS}DatatypeProperty`;
+export const OWL_ANNOTATION_PROPERTY = `${OWL_NS}AnnotationProperty`;
+export const OWL_EQUIVALENT_CLASS = `${OWL_NS}equivalentClass`;
+export const OWL_EQUIVALENT_PROPERTY = `${OWL_NS}equivalentProperty`;
+export const OWL_INVERSE_OF = `${OWL_NS}inverseOf`;
+
+export const SKOS_PREF_LABEL = `${SKOS_NS}prefLabel`;
+export const SKOS_ALT_LABEL = `${SKOS_NS}altLabel`;
+export const SKOS_DEFINITION = `${SKOS_NS}definition`;
+export const SKOS_NOTE = `${SKOS_NS}note`;
+export const SKOS_SCOPE_NOTE = `${SKOS_NS}scopeNote`;
+export const SKOS_EXAMPLE = `${SKOS_NS}example`;
+export const SKOS_HISTORY_NOTE = `${SKOS_NS}historyNote`;
+export const SKOS_EDITORIAL_NOTE = `${SKOS_NS}editorialNote`;
+export const SKOS_CHANGE_NOTE = `${SKOS_NS}changeNote`;
+
+export const DCTERMS_DESCRIPTION = `${DCTERMS_NS}description`;
+
+export const VS_TERM_STATUS = `${VS_NS}term_status`;
+
+export const SH_TARGET = `${SH_NS}target`;
+export const SH_TARGET_CLASS = `${SH_NS}targetClass`;
+export const SH_TARGET_NODE = `${SH_NS}targetNode`;
+export const SH_TARGET_OBJECTS_OF = `${SH_NS}targetObjectsOf`;
+export const SH_TARGET_SUBJECTS_OF = `${SH_NS}targetSubjectsOf`;
+export const SH_PROPERTY = `${SH_NS}property`;
+export const SH_PATH = `${SH_NS}path`;
+export const SH_NAME = `${SH_NS}name`;
+export const SH_DESCRIPTION = `${SH_NS}description`;
+export const SH_MESSAGE = `${SH_NS}message`;
+export const SH_NODE = `${SH_NS}node`;
+export const SH_QUALIFIED_VALUE_SHAPE = `${SH_NS}qualifiedValueShape`;
+export const SH_OR = `${SH_NS}or`;
+export const SH_AND = `${SH_NS}and`;
+export const SH_XONE = `${SH_NS}xone`;
+export const SH_IN = `${SH_NS}in`;
+export const SH_NODE_SHAPE = `${SH_NS}NodeShape`;
+export const SH_PROPERTY_SHAPE = `${SH_NS}PropertyShape`;
+export const SH_SHAPE = `${SH_NS}Shape`;
+
+export const RDF_PROPERTY_TYPES = new Set([RDF_PROPERTY, OWL_OBJECT_PROPERTY, OWL_DATATYPE_PROPERTY, OWL_ANNOTATION_PROPERTY]);
+export const RDF_CLASS_TYPES = new Set([RDFS_CLASS, OWL_CLASS]);
+export const SHACL_SHAPE_TYPES = new Set([SH_NODE_SHAPE, SH_PROPERTY_SHAPE, SH_SHAPE]);
+export const RDF_LABEL_PREDICATES = new Set([RDFS_LABEL, SKOS_PREF_LABEL, SKOS_ALT_LABEL]);
+export const RDF_COMMENT_PREDICATES = new Set([RDFS_COMMENT, SKOS_DEFINITION, DCTERMS_DESCRIPTION]);
+export const RDF_NOTE_PREDICATES = new Set([SKOS_NOTE, SKOS_SCOPE_NOTE, SKOS_HISTORY_NOTE, SKOS_EDITORIAL_NOTE, SKOS_CHANGE_NOTE]);
