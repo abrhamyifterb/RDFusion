@@ -40,7 +40,8 @@ export default class LanguageValue implements ValidationRule {
 						nodeToRange(this.text, val),
 						'Only strings may be language-tagged.',
 						DiagnosticSeverity.Warning,
-						"RDFusion"
+						this.key,
+							'RDFusion'
 					));
 				}
 			}

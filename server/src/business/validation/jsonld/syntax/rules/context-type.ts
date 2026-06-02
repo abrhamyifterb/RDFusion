@@ -1,7 +1,11 @@
 import { Node } from 'jsonc-parser';
 import { ValidationRule } from '../../../utils.js';
 import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver/node';
-import { nodeText, nodeToRange } from '../utils.js';
+import { nodeText, nodeToRange, walkAst } from '../utils.js';
+
+function isContextItem(node: Node | undefined): boolean {
+	return !!node && ['string', 'object', 'null'].includes(node.type);
+}
 
 export default class ContextTypeCheck implements ValidationRule {
 	public readonly key = 'contextType';
@@ -14,22 +18,42 @@ export default class ContextTypeCheck implements ValidationRule {
 	}
 
 	run(): Diagnostic[] {
-		if (this.ast?.type !== 'object') {return [];}
-	
 		const diags: Diagnostic[] = [];
-		for (const prop of this.ast.children ?? []) {
-			const [keyNode, valNode] = prop.children!;
-			if (nodeText(this.text, keyNode) === '"@context"') {
-				if (!['string', 'object', 'array'].includes(valNode?.type)) {
-					diags.push(Diagnostic.create(
-						nodeToRange(this.text, valNode),
-						'`@context` value must be a string, object, or array of contexts.',
-						DiagnosticSeverity.Error,
-						'RDFusion'
-					));
-				}
+		walkAst(this.ast, node => {
+			if (
+				node?.type !== 'property' ||
+				!Array.isArray(node.children) ||
+				node.children.length < 2 ||
+				nodeText(this.text, node.children[0]) !== '"@context"'
+			) {
+				return;
 			}
-		}
+			const valNode = node.children[1];
+			if (!valNode) return;
+			if (valNode.type === 'array') {
+				for (const item of valNode.children ?? []) {
+					if (!isContextItem(item)) {
+						diags.push(Diagnostic.create(
+							nodeToRange(this.text, item),
+							'`@context` arrays may contain strings, objects, or null values.',
+							DiagnosticSeverity.Error,
+							this.key,
+							'RDFusion'
+						));
+					}
+				}
+				return;
+			}
+			if (!isContextItem(valNode)) {
+				diags.push(Diagnostic.create(
+					nodeToRange(this.text, valNode),
+					'`@context` value must be a string, object, array of contexts, or null.',
+					DiagnosticSeverity.Error,
+					this.key,
+							'RDFusion'
+				));
+			}
+		});
 		return diags;
 	}
 }

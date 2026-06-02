@@ -48,7 +48,8 @@ export default class ReversePropertyCheck implements ValidationRule {
               nodeToRange(this.text, val),
               '`@reverse` inside @context (term definition) must be a string IRI/compact IRI (or blank node id).',
               DiagnosticSeverity.Error,
-              'RDFusion'
+              this.key,
+							'RDFusion'
             ));
           }
           return;
@@ -59,7 +60,8 @@ export default class ReversePropertyCheck implements ValidationRule {
             nodeToRange(this.text, val),
             '`@reverse` outside @context must be an object (reverse property map).',
             DiagnosticSeverity.Error,
-            'RDFusion'
+            this.key,
+							'RDFusion'
           ));
           return;
         }
@@ -76,7 +78,8 @@ export default class ReversePropertyCheck implements ValidationRule {
               nodeToRange(this.text, mapVal),
               `\`@reverse\` value for "${term}" must be a string IRI/compact IRI/blank node id, a node object, or an array of those.`,
               DiagnosticSeverity.Error,
-              'RDFusion'
+              this.key,
+							'RDFusion'
             ));
           }
         }

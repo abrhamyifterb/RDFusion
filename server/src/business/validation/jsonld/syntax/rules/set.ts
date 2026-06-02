@@ -28,7 +28,8 @@ export default class SetRule implements ValidationRule {
 						nodeToRange(this.text, val),
 						'`@set` value must be an array or object.',
 						DiagnosticSeverity.Warning,
-						"RDFusion"
+						this.key,
+							'RDFusion'
 					));
 				}
 			}

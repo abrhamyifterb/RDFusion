@@ -28,7 +28,8 @@ export default class MultipleContext implements ValidationRule {
             nodeToRange(this.text, keyNode),
             'Multiple `@context` properties found; only one is allowed at the top level.',
             DiagnosticSeverity.Warning,
-            'RDFusion'
+            this.key,
+							'RDFusion'
           ));
         }
       }

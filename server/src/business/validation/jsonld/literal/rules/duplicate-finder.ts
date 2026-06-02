@@ -59,6 +59,7 @@ export default class DuplicateCheck implements ValidationRule {
 							nodeToRange(this.text, keyNode),
 							`${message}`,
 							DiagnosticSeverity.Warning,
+							this.key,
 							'RDFusion'
 						));
 					}
@@ -97,6 +98,7 @@ export default class DuplicateCheck implements ValidationRule {
 							nodeToRange(this.text, elemNode),
 							`${message}`,
 							DiagnosticSeverity.Warning,
+							this.key,
 							'RDFusion'
 						));
 					}
@@ -145,6 +147,7 @@ export default class DuplicateCheck implements ValidationRule {
 							nodeToRange(this.text, iriNode),
 							`${message}`,
 							DiagnosticSeverity.Warning,
+							this.key,
 							'RDFusion'
 						));
 					}

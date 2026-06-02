@@ -61,7 +61,8 @@ export default class IdUsageCheck implements ValidationRule {
             // eslint-disable-next-line no-useless-escape
             `Property "${term}" is coerced with @type:@id; its value must be an IRI string, an object {"@id": "<IRI>"}, or an array of those.`,
             DiagnosticSeverity.Error,
-            'RDFusion'
+            this.key,
+							'RDFusion'
           )
         );
       }

@@ -28,7 +28,8 @@ export default class ContextObject implements ValidationRule {
 					nodeToRange(this.text, val),
 					'`@context` value must be an object or null.',
 					DiagnosticSeverity.Warning,
-					"RDFusion"
+					this.key,
+							'RDFusion'
 				));
 			}
 		}

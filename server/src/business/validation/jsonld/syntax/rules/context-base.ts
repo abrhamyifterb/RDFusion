@@ -2,6 +2,12 @@ import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { walkAst, nodeText, nodeToRange } from '../utils.js';
 import { Node } from 'jsonc-parser';
 import { ValidationRule } from '../../../utils.js';
+import URI from 'uri-js';
+
+function isValidIriReference(value: string): boolean {
+	if (value === '') return true;
+	return !URI.parse(value).error;
+}
 
 export default class ContextBase implements ValidationRule {
 	public readonly key = 'baseCheck';
@@ -25,23 +31,22 @@ export default class ContextBase implements ValidationRule {
 			const val = node.children[1];
 			if (val?.type === 'string') {
 				const raw = this.text.slice(val?.offset+1, val?.offset+val?.length-1);
-				try { 
-					new URL(raw); 
-				}
-				catch {
+				if (!isValidIriReference(raw)) {
 					diags.push(Diagnostic.create(
 						nodeToRange(this.text, val),
-						'Invalid @base IRI.',
+						'Invalid @base IRI reference.',
 						DiagnosticSeverity.Error,
-						"RDFusion"
+						this.key,
+							'RDFusion'
 					));
 				}
 			} else if (val?.type !== 'null') {
 				diags.push(Diagnostic.create(
 					nodeToRange(this.text, val),
-					'`@base` must be a string IRI or null.',
+					'`@base` must be a string IRI reference or null.',
 					DiagnosticSeverity.Error,
-					"RDFusion"
+					this.key,
+							'RDFusion'
 				));
 			}
 		}

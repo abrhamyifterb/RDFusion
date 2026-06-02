@@ -36,7 +36,8 @@ export default class UnknownKeywordCheck implements ValidationRule {
             nodeToRange(this.text, keyNode),
             `Unknown JSON-LD keyword "${key}".`,
             DiagnosticSeverity.Warning,
-            'RDFusion'
+            this.key,
+							'RDFusion'
           ));
         }
       }

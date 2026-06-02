@@ -9,12 +9,12 @@ import { getIanaSchemes } from '../../../iana-schemes.js';
 
 export default class UndefinedPrefix implements ValidationRule {
 	public readonly key = 'undefinedPrefix';
-	private ctx!: Map<string,string>;
+	private prefixMap!: Map<string,string>;
 	private ast!: Node; private text!: string;
 	private iana = new Set<string>();
 
 	async init(ctx: any) {
-		this.ctx = ctx.contextMap;
+		this.prefixMap = ctx.prefixMap ?? new Map<string,string>();
 		this.ast = ctx.ast;
 		this.text = ctx.text;
 		try {
@@ -30,7 +30,6 @@ export default class UndefinedPrefix implements ValidationRule {
 			'@id','@type','@value','@language','@list','@set','@context','@graph'
 		]);
 
-    const absoluteIRI = /^[A-Za-z][A-Za-z0-9+.-]*:\/\//;
 		walkAst(this.ast, node => {
 			if (
 				node?.type === 'property' &&
@@ -40,29 +39,29 @@ export default class UndefinedPrefix implements ValidationRule {
 				const key = nodeText(this.text, node.children[0]).slice(1,-1);
 				const parsed = URI.parse(key);
 
-				if (parsed.scheme && this.iana.size > 0) {		
+				if (parsed.scheme && this.iana.size > 0) {
 					if(parsed.error) {
-						if (parsed.error) {
-							diags.push(Diagnostic.create(
+						diags.push(Diagnostic.create(
 							nodeToRange(this.text,node.children[0]),
 							`Invalid IRI syntax: ${parsed.error}`,
 							DiagnosticSeverity.Warning,
-							this.key
-							));
-							return;
-						}
+							this.key,
+							'RDFusion'
+						));
+						return;
 					}
 					else if(this.iana.has((parsed.scheme || '').toLowerCase())) {return;}
 				}
-				
-				if (key.includes(':') && !keywords.has(key) && !absoluteIRI.test(key)) {
+
+				if (key.includes(':') && !keywords.has(key)) {
 					const prefix = key.split(':',1)[0];
-					if (!this.ctx.has(prefix)) {
+					if (!this.prefixMap.has(prefix)) {
 						diags.push(Diagnostic.create(
 							nodeToRange(this.text,node.children[0]),
 							`Undefined prefix "${prefix}" in property "${key}".`,
 							DiagnosticSeverity.Error,
-							"RDFusion"
+							this.key,
+							'RDFusion'
 						));
 					}
 				}

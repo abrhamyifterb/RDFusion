@@ -117,9 +117,10 @@ export default class ReverseTermCheck implements ValidationRule {
           if (this.valueContainsString(valueNode)) {
             diags.push(Diagnostic.create(
               nodeToRange(this.text, keyNode),
-              `Property "${termOrIri}" is used in \`@reverse\` with a string value, but its context mapping does not set \`@type\` to \`"@id"\`. `,
+              `Property "${termOrIri}" is used in \`@reverse\` with a string value, but its context mapping does not set \`@type\` to \`"@id"\`.`,
               DiagnosticSeverity.Error,
-              'RDFusion'
+              this.key,
+							'RDFusion'
             ));
           }
         }

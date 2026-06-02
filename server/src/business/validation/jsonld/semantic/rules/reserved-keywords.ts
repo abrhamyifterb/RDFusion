@@ -60,7 +60,8 @@ export default class ReservedKeywordRedefinition implements ValidationRule {
               nodeToRange(this.text, valNode),
               `Invalid value for JSON-LD context directive "${term}".`,
               DiagnosticSeverity.Error,
-              'RDFusion'
+              this.key,
+							'RDFusion'
             ));
           }
           continue;
@@ -74,7 +75,8 @@ export default class ReservedKeywordRedefinition implements ValidationRule {
           nodeToRange(this.text, keyNode),
           msg,
           DiagnosticSeverity.Error,
-          'RDFusion'
+          this.key,
+							'RDFusion'
         ));
       }
     };

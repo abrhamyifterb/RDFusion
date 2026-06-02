@@ -26,7 +26,8 @@ export default class ControlChar implements ValidationRule {
 							nodeToRange(this.text, node),
 							`Unescaped control character U+${code.toString(16).padStart(4,'0')} in string.`,
 							DiagnosticSeverity.Error,
-							"RDFusion"
+							this.key,
+							'RDFusion'
 						));
 						break;
 					}

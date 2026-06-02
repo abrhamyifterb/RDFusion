@@ -30,7 +30,8 @@ export default class ListRule implements ValidationRule {
 						nodeToRange(this.text, valueNode),
 						'`@list` value must be an array.',
 						DiagnosticSeverity.Warning,
-						"RDFusion"
+						this.key,
+							'RDFusion'
 					));
 				}
 			}

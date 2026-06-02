@@ -22,7 +22,8 @@ export default class DuplicateId implements ValidationRule {
 					d.range,
 					`Duplicate @id "${d.id}" in @graph.`,
 					DiagnosticSeverity.Warning,
-					"RDFusion"
+					this.key,
+							'RDFusion'
 				));
 			} else {
 				seen.set(d.id, d);

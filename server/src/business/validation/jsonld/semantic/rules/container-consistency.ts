@@ -82,9 +82,10 @@ export default class ContainerUsageCheck implements ValidationRule {
 				) {
 				diags.push(Diagnostic.create(
 					nodeToRange(this.text, valNode),
-					`Property "${term}" is defined with @container:${containers.join(',')} so its value must be an array.`,
+					`Property "${term}" is defined with @container: ${containers.join(", ")}; its value must be an array.`,
 					DiagnosticSeverity.Error,
-					'RDFusion'
+					this.key,
+							'RDFusion'
 				));
 				}
 
@@ -94,9 +95,10 @@ export default class ContainerUsageCheck implements ValidationRule {
 				) {
 				diags.push(Diagnostic.create(
 					nodeToRange(this.text, valNode),
-					`Property "${term}" is defined with @container:${containers.join(',')} so its value must be an object.`,
+					`Property "${term}" is defined with @container: ${containers.join(", ")}; its value must be an object.`,
 					DiagnosticSeverity.Error,
-					'RDFusion'
+					this.key,
+							'RDFusion'
 				));
 				}
 			}

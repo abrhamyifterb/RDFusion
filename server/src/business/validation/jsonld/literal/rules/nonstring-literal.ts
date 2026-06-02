@@ -30,7 +30,8 @@ export default class NonStringLiteral implements ValidationRule {
 						nodeToRange(this.text, node),
 						`Literal ${nodeText(this.text,node)} without explicit datatype or language.`,
 						DiagnosticSeverity.Warning,
-						"RDFusion"
+						this.key,
+							'RDFusion'
 					));
 				}
 			}

@@ -28,17 +28,19 @@ export default class ContextDir implements ValidationRule {
 				if (!['ltr','rtl'].includes(raw)) {
 					diags.push(Diagnostic.create(
 						nodeToRange(this.text, val),
-						`Invalid @direction: "${raw}". Must be "ltr","rtl" or null.`,
+						`Invalid @direction: "${raw}". Use "ltr", "rtl", or null.`,
 						DiagnosticSeverity.Warning,
-						"RDFusion"
+						this.key,
+							'RDFusion'
 					));
 				}
 			} else if (val?.type !== 'null') {
 				diags.push(Diagnostic.create(
 					nodeToRange(this.text, val),
-					'`@direction` must be string or null.',
+					'`@direction` must be a string or null.',
 					DiagnosticSeverity.Error,
-					"RDFusion"
+					this.key,
+							'RDFusion'
 				));
 			}
 		}

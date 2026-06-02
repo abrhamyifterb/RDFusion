@@ -18,7 +18,8 @@ export default class RootTypeCheck implements ValidationRule {
 					Range.create(0, 0,0,1 ),
 					'JSON-LD document root must be a JSON object or an array of JSON objects.',
 					DiagnosticSeverity.Error,
-					'RDFusion'
+					this.key,
+							'RDFusion'
 				)
 			);
 		}

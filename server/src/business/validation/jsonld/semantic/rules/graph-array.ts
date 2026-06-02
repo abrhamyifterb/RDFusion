@@ -44,7 +44,8 @@ export default class GraphArrayCheck implements ValidationRule {
 				nodeToRange(this.text, val),
 				'`@graph` value must be an array of node objects.',
 				DiagnosticSeverity.Error,
-				'RDFusion'
+				this.key,
+							'RDFusion'
 			));
 			}
 		}

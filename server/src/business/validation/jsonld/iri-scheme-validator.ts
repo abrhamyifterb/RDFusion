@@ -2,7 +2,7 @@
 /* eslint-disable no-useless-escape */
 import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { Node } from 'jsonc-parser';
-import URI from 'uri-js';
+import { parseGenericIriScheme } from '../iri-parse.js';
 import { getIanaSchemes } from '../iana-schemes.js';
 //import { ValidationRule } from '../utils.js';
 import { walkAst, nodeText, nodeToRange } from './syntax/utils.js';
@@ -27,13 +27,13 @@ export default class JsonLdIriSchemeCheck  {
     try {
       if (cfg.strictSchemeCheck) {
 				this.iana = new Set(
-					cfg.customIriScheme.split(',').map((s: string) => s.trim())
+					String(cfg.customIriScheme ?? '').split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean)
 				);
       } else {
         this.iana = await getIanaSchemes(); 
       }
     } catch {
-      this.iana = new Set(); 
+      this.iana = await getIanaSchemes(); 
     }
   }
 
@@ -70,23 +70,25 @@ export default class JsonLdIriSchemeCheck  {
 
   private validateAbsoluteIri(raw: string, node: Node, out: Diagnostic[]) {
     const range = nodeToRange(this.text, node);
-    const parsed = URI.parse(raw);
+    const parsed = parseGenericIriScheme(raw);
     if (parsed.error) {
       out.push(Diagnostic.create(
         range,
         `Invalid IRI syntax: ${parsed.error}`,
         DiagnosticSeverity.Warning,
-        this.key
+        this.key,
+							'RDFusion'
       ));
       return;
     }
-    const scheme = (parsed.scheme || '').toLowerCase();
+    const scheme = parsed.scheme ?? '';
     if (scheme && !this.iana.has(scheme)) {
       out.push(Diagnostic.create(
         range,
-        `Scheme "${scheme}:" is not registered with IANA.`,
+        `IRI scheme "${scheme}:" is not registered with IANA.`,
         DiagnosticSeverity.Warning,
-        this.key
+        this.key,
+							'RDFusion'
       ));
     }
   }

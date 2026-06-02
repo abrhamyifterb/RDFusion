@@ -21,7 +21,8 @@ export default class MissingType implements ValidationRule {
 				d.range,
 				`Missing @type for node <${d.id}>.`,
 				DiagnosticSeverity.Warning,
-				"RDFusion"
+				this.key,
+							'RDFusion'
 			));
 	}
 }

@@ -47,7 +47,8 @@ export default class MissingTypeOrLang implements ValidationRule {
 						nodeToRange(this.text, valProp.children[0]),
 						'Value object must include either @type or @language alongside @value.',
 						DiagnosticSeverity.Warning,
-						"RDFusion"
+						this.key,
+							'RDFusion'
 					));
 				}
 			}

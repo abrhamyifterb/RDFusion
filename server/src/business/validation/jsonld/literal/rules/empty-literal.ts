@@ -29,9 +29,10 @@ export default class EmptyLiteral implements ValidationRule {
 				//const val = node.children![1];
 				diags.push(Diagnostic.create(
 					nodeToRange(this.text, valNode),
-					'Empty string is not allowed here.',
-					DiagnosticSeverity.Error,
-					"RDFusion"
+					'Empty string literal; verify this is intentional.',
+					DiagnosticSeverity.Warning,
+					this.key,
+							'RDFusion'
 				));
 		}
 		});
