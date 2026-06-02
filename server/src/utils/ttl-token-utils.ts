@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Range } from "vscode-languageserver/node.js";
+import { tokenToLspRange } from "./shared/turtle/range.js";
 
 export const LITERAL_TOKEN_TYPES: ReadonlySet<string> = new Set([
 	"STRING_LITERAL_QUOTE",
@@ -13,12 +14,7 @@ export function isLiteralToken(token: { type: string }): boolean {
 }
 
 export function tokenToRange(token: any): Range {
-	return Range.create(
-		(token.startLine || 1) - 1,
-		(token.startColumn || 1) - 1,
-		(token.endLine || token.startLine || 1) - 1,
-		(token.endColumn || token.startColumn || 1) - 1
-	);
+	return tokenToLspRange(token);
 }
 
 export function buildPrefixMapping(tokens: any[]): Record<string, string> {

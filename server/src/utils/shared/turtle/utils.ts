@@ -1,13 +1,9 @@
-import { Range, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
+import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { Token } from './tokenizer';
+import { tokenToLspRange } from './range.js';
 
 export function tokenToRange(tok: Token): Range {
-	return Range.create(
-		(tok.startLine  || 1) - 1,
-		(tok.startColumn|| 1) - 1,
-		(tok.endLine    || tok.startLine  || 1) - 1,
-		(tok.endColumn || tok.startColumn|| 1) - 1
-	);
+	return tokenToLspRange(tok);
 }
 
 export function makeDiag(tok: Token, message: string, severity: DiagnosticSeverity) {
