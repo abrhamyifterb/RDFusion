@@ -8,6 +8,8 @@ import {
 import { JsonldParsedGraph, ParsedGraph } from '../../../data/irdf-parser';
 
 export class DuplicateChecker {
+	private readonly key = 'duplicateTriple';
+
 	constructor() {}
 
 	public async validate(
@@ -54,10 +56,11 @@ export class DuplicateChecker {
 				diagnostics.push({
 					range: Range.create(
 						Position.create(startLine - 1, startColumn - 1),
-						Position.create(endLine - 1, endColumn - 1)
+						Position.create(endLine - 1, endColumn)
 					),
 					message,
 					severity: DiagnosticSeverity.Warning,
+					code: this.key,
 					source: "RDFusion",
 				});
 			}

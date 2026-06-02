@@ -19,6 +19,10 @@ import { literalRules } from './literal/index.js';
 import { RDFusionConfigSettings } from '../../../utils/irdfusion-config-settings';
 import { DuplicateChecker } from './duplicate-finder';
 import { IriSchemeValidator } from './Iri-scheme-validator';
+import { ShaclSelectionSettings } from '../../../data/shacl/shacl-selection';
+import type { TermProvider } from '../../autocomplete/term-completion/term-provider.js';
+import { RemoteTermVocabularyValidator } from './remote-term-vocabulary-validator.js';
+import { tokenToLspRange } from '../../../utils/shared/turtle/range.js';
 
 export class TurtleValidator implements IRdfValidator {
 	private turtleValidationConfig;
@@ -26,21 +30,24 @@ export class TurtleValidator implements IRdfValidator {
 	constructor(
 		private dataManager: DataManager, 
 		private documents: TextDocuments<TextDocument>,
-		configSettings: RDFusionConfigSettings
+		configSettings: RDFusionConfigSettings,
+		private termProvider?: TermProvider,
 	) {
 		this.turtleValidationConfig = configSettings.turtle.validations;
 		this.commonValidationConfig = configSettings.common.validations;
 	}
 	
-	async validate(uri: string, shaclValidator: ShaclValidator): Promise<Diagnostic[]> {
+	async validate(uri: string, shaclValidator: ShaclValidator, shaclSelection: ShaclSelectionSettings): Promise<Diagnostic[]> {
 		const diagnostics: Diagnostic[] = [];
 		
-		const parsedGraph = this.dataManager.getParsedData(uri) as ParsedGraph;
+		const parsedGraph = this.dataManager.getGraphSnapshot(uri) as ParsedGraph;
 		if (!parsedGraph) {
 			diagnostics.push(Diagnostic.create(
 				Range.create(Position.create(0, 0), Position.create(0, 1)),
 				"Document could not be parsed; validation aborted.",
-				DiagnosticSeverity.Error
+				DiagnosticSeverity.Error,
+				'turtleParseError',
+				'RDFusion Turtle'
 			));
 			return diagnostics;
 		}
@@ -66,6 +73,11 @@ export class TurtleValidator implements IRdfValidator {
 			diagnostics.push(...rule.run());
 		}
 		
+		if (enabledMap['remoteTermVocabulary'] !== false && this.termProvider) {
+			const remoteTermValidator = new RemoteTermVocabularyValidator(this.termProvider);
+			diagnostics.push(...remoteTermValidator.validate(parsedGraph));
+		}
+
 		if(enabledMap['duplicateTriple']){
 			const dupliValidator = new DuplicateChecker();
 			const duplDiags = await dupliValidator.validate(parsedGraph);
@@ -80,7 +92,7 @@ export class TurtleValidator implements IRdfValidator {
 
 		
 		if(enabledMap['shaclConstraint']){
-			const shaclDiags = await shaclValidator.validate(parsedGraph);
+			const shaclDiags = await shaclValidator.validate(parsedGraph, shaclSelection);
 			diagnostics.push(...shaclDiags);
 		}
 
@@ -92,27 +104,23 @@ export class TurtleValidator implements IRdfValidator {
 		for (const err of errs) {
 			if (err && err.token) {
 			diags.push(Diagnostic.create(
-				err.token.startColumn ? this.tokenToRange(err.token) : this.tokenToRange(err.previousToken),
+				err.token.startColumn ? tokenToLspRange(err.token) : tokenToLspRange(err.previousToken),
 				err.message || JSON.stringify(err),
-				DiagnosticSeverity.Error
+				DiagnosticSeverity.Error,
+				'turtleParseError',
+				'RDFusion Turtle'
 			));
 			} else {
 			diags.push(Diagnostic.create(
 				Range.create(0, 0, 0, 1),
 				err.message || JSON.stringify(err),
-				DiagnosticSeverity.Error
+				DiagnosticSeverity.Error,
+				'turtleParseError',
+				'RDFusion Turtle'
 			));
 			}
 		}
 		return diags;
 	}
 
-	private tokenToRange(token: any): Range {
-		return Range.create(
-			(token.startLine || 1) - 1,
-			(token.startColumn || 1) - 1,
-			(token.endLine || token.startLine || 1) - 1,
-			(token.endColumn || token.startColumn || 1) - 1
-		);
-	}
 }

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Diagnostic, DiagnosticSeverity, Range, TextDocuments } from 'vscode-languageserver';
-import URI from 'uri-js';
+import { parseGenericIriScheme } from '../iri-parse.js';
 import { computeLineColumn } from '../../../data/compute-line-column.js';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getIanaSchemes } from '../iana-schemes.js';
@@ -9,6 +9,8 @@ const IRI_PUNCTUATION_REGEX = /<([^>]+)>(?:[ \t]*([.;])[ \t]*)?/g;
 const BASE_REGEX = /@base\s*<([^>]+)>\s*\./gi;
 
 export class IriSchemeValidator {
+	private readonly key = 'iriSchemeCheck';
+
 	constructor(
 		private documents: TextDocuments<TextDocument>
 	) {}
@@ -21,7 +23,7 @@ export class IriSchemeValidator {
 		try {
 			iana = await getIanaSchemes();
 		} catch (err: any) {
-			console.warn('Could not load IANA schemes, skipping strict checks:', err);
+			console.warn('RDFusion could not load the IRI scheme list; scheme validation will be skipped for this pass.', err);
 			iana = new Set();
 		}
 
@@ -38,31 +40,33 @@ export class IriSchemeValidator {
 				computeLineColumn(text, endOffset)
 			);
 
-			const parsed = URI.parse(inside);
+			const parsed = parseGenericIriScheme(inside);
 			if (parsed.error) {
 				diags.push(
 					Diagnostic.create(
 						range,
 						`Invalid IRI syntax: ${parsed.error}`,
-						DiagnosticSeverity.Warning, 
+						DiagnosticSeverity.Warning,
+						this.key,
 						'RDFusion'
 					)
 				);
 				continue;
 			}
 
-			const scheme = (parsed.scheme ?? '').toLowerCase();
+			const scheme = parsed.scheme ?? '';
 			if (scheme) {
 				if (cfg.strictSchemeCheck) {
 				const allowed = new Set(
-					cfg.customIriScheme.split(',').map((s: string) => s.trim())
+					String(cfg.customIriScheme ?? '').split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean)
 				);
 				if (!allowed.has(scheme)) {
 					diags.push(
 						Diagnostic.create(
 							range,
-							`Scheme "${scheme}:" not in custom allowed list.`,
-							DiagnosticSeverity.Warning, 
+							`IRI scheme "${scheme}:" is not in the custom allowed list.`,
+							DiagnosticSeverity.Warning,
+							this.key,
 							'RDFusion'
 						)
 					);
@@ -72,8 +76,9 @@ export class IriSchemeValidator {
 						diags.push(
 							Diagnostic.create(
 								range,
-								`Scheme "${scheme}:" not registered with IANA.`,
-								DiagnosticSeverity.Warning, 
+								`IRI scheme "${scheme}:" is not registered with IANA.`,
+								DiagnosticSeverity.Warning,
+								this.key,
 								'RDFusion'
 							)
 						);
@@ -83,8 +88,9 @@ export class IriSchemeValidator {
 				diags.push(
 					Diagnostic.create(
 						range,
-						`Relative IRI "<${inside}>" used without @base."`,
-						DiagnosticSeverity.Warning, 
+						`Relative IRI "<${inside}>" is used without an @base declaration.`,
+						DiagnosticSeverity.Warning,
+						this.key,
 						'RDFusion'
 					)
 				);

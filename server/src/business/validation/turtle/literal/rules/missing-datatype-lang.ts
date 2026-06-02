@@ -17,7 +17,8 @@ export default class MissingDatatypeOrLang implements TtlValidation {
 				l.range,
 				`Literal ${(l.value)} is missing a datatype or language tag.`,
 				DiagnosticSeverity.Warning,
-				"RDFusion"
+				this.key,
+							'RDFusion'
 		));
 	}
 }

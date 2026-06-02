@@ -35,7 +35,8 @@ export default class XsdLexicalRule implements TtlValidation {
 						l.range,
 						`Invalid lexical form for datatype <${l.datatype}>: "${l.value}".`,
 						DiagnosticSeverity.Error,
-						"RDFusion"
+						this.key,
+							'RDFusion'
 					));
 				}
 			}

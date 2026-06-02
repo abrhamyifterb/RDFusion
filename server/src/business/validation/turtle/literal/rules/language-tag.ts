@@ -21,7 +21,8 @@ export default class LanguageTagRule implements TtlValidation {
 						l.range,
 						`Invalid BCP-47 language tag: "${tag}".`,
 						DiagnosticSeverity.Warning,
-						"RDFusion"
+						this.key,
+							'RDFusion'
 					)];
 				}
 			return [];
