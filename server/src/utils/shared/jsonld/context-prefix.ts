@@ -9,11 +9,11 @@ export function jsonStringNodeValue(
   text: string,
   node: Node | undefined,
 ): string | undefined {
-  if (!node || node.type !== "string") return undefined;
+  if (!node || node.type !== "string") {return undefined;}
   const raw = rawNodeText(text, node);
-  if (!raw?.startsWith('"') || !raw.endsWith('"')) return undefined;
+  if (!raw?.startsWith('"') || !raw.endsWith('"')) {return undefined;}
   
-  if (raw.includes("\\")) return undefined;
+  if (raw.includes("\\")) {return undefined;}
   return raw.slice(1, -1);
 }
 
@@ -30,13 +30,13 @@ export function findJsonLdContextValues(
 ): Node[] {
   const values: Node[] = [];
   const walk = (node: Node | undefined) => {
-    if (!node) return;
+    if (!node) {return;}
     if (isContextProperty(text, node)) {
       const value = node.children?.[1];
-      if (value) values.push(value);
+      if (value) {values.push(value);}
       return;
     }
-    for (const child of node.children ?? []) walk(child);
+    for (const child of node.children ?? []) {walk(child);}
   };
   walk(root);
   return values;
@@ -48,18 +48,18 @@ export function findJsonLdContextObjects(
 ): Node[] {
   const objects: Node[] = [];
   const collect = (value: Node | undefined) => {
-    if (!value) return;
+    if (!value) {return;}
     if (value.type === "object") {
       objects.push(value);
       return;
     }
     if (value.type === "array") {
       for (const item of value.children ?? []) {
-        if (item.type === "object") objects.push(item);
+        if (item.type === "object") {objects.push(item);}
       }
     }
   };
-  for (const value of findJsonLdContextValues(root, text)) collect(value);
+  for (const value of findJsonLdContextValues(root, text)) {collect(value);}
   return objects;
 }
 
@@ -79,7 +79,7 @@ function valueAsStringOrId(
   }
   if (value?.type === "object") {
     for (const prop of value.children ?? []) {
-      if (prop.type !== "property") continue;
+      if (prop.type !== "property") {continue;}
       if (jsonStringNodeValue(text, prop.children?.[0]) === "@id") {
         return jsonStringNodeValue(text, prop.children?.[1]);
       }
@@ -110,13 +110,13 @@ function objectBooleanProperty(
   value: Node | undefined,
   key: string,
 ): boolean | undefined {
-  if (value?.type !== "object") return undefined;
+  if (value?.type !== "object") {return undefined;}
   for (const prop of value.children ?? []) {
-    if (prop.type !== "property") continue;
+    if (prop.type !== "property") {continue;}
     if (jsonStringNodeValue(text, prop.children?.[0]) === key) {
       const raw = rawNodeText(text, prop.children?.[1]);
-      if (raw === "true") return true;
-      if (raw === "false") return false;
+      if (raw === "true") {return true;}
+      if (raw === "false") {return false;}
     }
   }
   return undefined;
@@ -138,9 +138,9 @@ export function isJsonLdPrefixTermDefinition(
     !iri ||
     iri.startsWith("@")
   )
-    return false;
-  if (def?.["@prefix"] === false) return false;
-  if (def?.["@prefix"] === true) return true;
+    {return false;}
+  if (def?.["@prefix"] === false) {return false;}
+  if (def?.["@prefix"] === true) {return true;}
   return isJsonLdGenDelim(iri) || iri.startsWith("_:");
 }
 
@@ -151,10 +151,10 @@ function isLocalPrefixDefinition(
   iri: string | undefined,
 ): boolean {
   if (!iri || term.includes(":") || term.includes("/") || iri.startsWith("@"))
-    return false;
+    {return false;}
   const explicitPrefix = objectBooleanProperty(text, value, "@prefix");
-  if (explicitPrefix === false) return false;
-  if (explicitPrefix === true) return true;
+  if (explicitPrefix === false) {return false;}
+  if (explicitPrefix === true) {return true;}
   return isJsonLdGenDelim(iri) || iri.startsWith("_:");
 }
 
@@ -162,13 +162,13 @@ function resolveVocabValue(
   value: string | undefined,
   prefixes: Map<string, string>,
 ): string | undefined {
-  if (!value) return undefined;
+  if (!value) {return undefined;}
   const colon = value.indexOf(":");
   if (colon > 0) {
     const prefix = value.slice(0, colon);
     const suffix = value.slice(colon + 1);
     const base = prefixes.get(prefix);
-    if (base) return `${base}${suffix}`;
+    if (base) {return `${base}${suffix}`;}
   }
   return value;
 }
@@ -227,9 +227,9 @@ function objectPropertyValue(
   object: Node | undefined,
   key: string,
 ): Node | undefined {
-  if (object?.type !== "object") return undefined;
+  if (object?.type !== "object") {return undefined;}
   for (const prop of object.children ?? []) {
-    if (prop.type !== "property") continue;
+    if (prop.type !== "property") {continue;}
     if (jsonStringNodeValue(text, prop.children?.[0]) === key) {
       return prop.children?.[1];
     }
@@ -243,9 +243,9 @@ function applyContextObject(
   text: string,
 ): void {
   for (const entry of context.children ?? []) {
-    if (entry.type !== "property") continue;
+    if (entry.type !== "property") {continue;}
     const key = jsonStringNodeValue(text, entry.children?.[0]);
-    if (!key) continue;
+    if (!key) {continue;}
     const value = entry.children?.[1];
 
     if (key === "@vocab") {
@@ -261,7 +261,7 @@ function applyContextObject(
       continue;
     }
 
-    if (key.startsWith("@")) continue;
+    if (key.startsWith("@")) {continue;}
 
     const rawValue = rawNodeText(text, value);
     if (rawValue === "null") {
@@ -321,7 +321,7 @@ function applyContextValueToState(
   value: Node | undefined,
   text: string,
 ): void {
-  if (!value) return;
+  if (!value) {return;}
   state.hasContext = true;
   if (rawNodeText(text, value) === "null") {
     state.contextMap.clear();
@@ -347,7 +347,7 @@ function applyObjectContext(
   objectNode: Node,
   text: string,
 ): void {
-  if (objectNode.type !== "object") return;
+  if (objectNode.type !== "object") {return;}
   for (const entry of objectNode.children ?? []) {
     if (isContextProperty(text, entry)) {
       applyContextValueToState(state, entry.children?.[1], text);
@@ -369,12 +369,19 @@ export function findJsonLdLocalContextAt(
   root: Node | undefined,
   text: string,
   offset: number,
+  base?: Partial<Pick<JsonLdLocalContextState, 'contextMap' | 'prefixMap' | 'vocab' | 'keywordAliases' | 'scopedContextByTerm'>>,
 ): JsonLdLocalContextState {
   const state: JsonLdLocalContextState = {
-    contextMap: new Map<string, string>(),
-    prefixMap: new Map<string, string>(),
-    keywordAliases: new Map<string, Set<string>>(),
-    scopedContextByTerm: new Map<string, Node>(),
+    contextMap: new Map<string, string>(base?.contextMap ?? []),
+    prefixMap: new Map<string, string>(base?.prefixMap ?? []),
+    vocab: base?.vocab,
+    keywordAliases: new Map<string, Set<string>>(
+      Array.from(base?.keywordAliases?.entries() ?? [], ([keyword, aliases]) => [
+        keyword,
+        new Set(aliases),
+      ]),
+    ),
+    scopedContextByTerm: new Map<string, Node>(base?.scopedContextByTerm ?? []),
     hasContext: false,
   };
 
@@ -382,7 +389,7 @@ export function findJsonLdLocalContextAt(
     node: Node | undefined,
     current: JsonLdLocalContextState,
   ): JsonLdLocalContextState | undefined => {
-    if (!node || !nodeContainsOffset(node, offset)) return undefined;
+    if (!node || !nodeContainsOffset(node, offset)) {return undefined;}
     const next = cloneState(current);
     if (node.type === "object") {
       applyObjectContext(next, node, text);
@@ -409,13 +416,13 @@ export function findJsonLdLocalContextAt(
       }
       if (valueNode) {
         const hit = walk(valueNode, valueState);
-        if (hit) return hit;
+        if (hit) {return hit;}
       }
       return next;
     }
     for (const child of node.children ?? []) {
       const hit = walk(child, next);
-      if (hit) return hit;
+      if (hit) {return hit;}
     }
     return next;
   };
@@ -469,9 +476,9 @@ export function findJsonLdPrefixNamespace(
   for (let i = contexts.length - 1; i >= 0; i -= 1) {
     const context = contexts[i];
     for (const entry of context?.children ?? []) {
-      if (entry.type !== "property") continue;
+      if (entry.type !== "property") {continue;}
       const key = jsonStringNodeValue(text, entry.children?.[0]);
-      if (key !== prefix) continue;
+      if (key !== prefix) {continue;}
       const value = entry.children?.[1];
       const iri = valueAsStringOrId(text, value);
       return isLocalPrefixDefinition(text, key, value, iri) ? iri : undefined;
@@ -487,9 +494,9 @@ export function findJsonLdPrefixNamespaces(
   const prefixes = new Map<string, string>();
   for (const context of findJsonLdContextObjects(root, text)) {
     for (const entry of context.children ?? []) {
-      if (entry.type !== "property") continue;
+      if (entry.type !== "property") {continue;}
       const key = jsonStringNodeValue(text, entry.children?.[0]);
-      if (!key || key.startsWith("@")) continue;
+      if (!key || key.startsWith("@")) {continue;}
       const value = entry.children?.[1];
       const iri = valueAsStringOrId(text, value);
       if (isLocalPrefixDefinition(text, key, value, iri)) {
@@ -508,16 +515,16 @@ export function findJsonLdDefaultVocab(
   const prefixes = new Map<string, string>();
   for (const context of findJsonLdContextObjects(root, text)) {
     for (const entry of context.children ?? []) {
-      if (entry.type !== "property") continue;
+      if (entry.type !== "property") {continue;}
       const key = jsonStringNodeValue(text, entry.children?.[0]);
       const value = entry.children?.[1];
-      if (!key) continue;
+      if (!key) {continue;}
       if (key === "@vocab") {
         const raw = jsonStringNodeValue(text, value);
         vocab = resolveVocabValue(raw, prefixes);
         continue;
       }
-      if (key.startsWith("@")) continue;
+      if (key.startsWith("@")) {continue;}
       const iri = valueAsStringOrId(text, value);
       if (isLocalPrefixDefinition(text, key, value, iri)) {
         prefixes.set(key, iri!);
@@ -535,9 +542,9 @@ export function findJsonLdKeywordAliases(
   const aliases = new Set<string>();
   for (const context of findJsonLdContextObjects(root, text)) {
     for (const entry of context.children ?? []) {
-      if (entry.type !== "property") continue;
+      if (entry.type !== "property") {continue;}
       const key = jsonStringNodeValue(text, entry.children?.[0]);
-      if (!key || key.startsWith("@")) continue;
+      if (!key || key.startsWith("@")) {continue;}
       if (valueAsStringOrId(text, entry.children?.[1]) === keyword) {
         aliases.add(key);
       }

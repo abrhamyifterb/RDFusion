@@ -5,6 +5,7 @@ import { nodeText, nodeToRange, walkAst } from '../../syntax/utils.js';
 import { ValidationRule } from '../../../utils.js';
 
 import URI from 'uri-js';
+import { findJsonLdLocalContextAt } from '../../../../../utils/shared/jsonld/context-prefix.js';
 import { getIanaSchemes } from '../../../iana-schemes.js';
 
 export default class UndefinedPrefix implements ValidationRule {
@@ -55,7 +56,13 @@ export default class UndefinedPrefix implements ValidationRule {
 
 				if (key.includes(':') && !keywords.has(key)) {
 					const prefix = key.split(':',1)[0];
-					if (!this.prefixMap.has(prefix)) {
+					const scopedContext = findJsonLdLocalContextAt(
+						this.ast,
+						this.text,
+						node.children[0].offset,
+						{ prefixMap: this.prefixMap },
+					);
+					if (!scopedContext.prefixMap.has(prefix)) {
 						diags.push(Diagnostic.create(
 							nodeToRange(this.text,node.children[0]),
 							`Undefined prefix "${prefix}" in property "${key}".`,

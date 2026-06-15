@@ -59,6 +59,7 @@ import { TermMetadataService } from "./business/autocomplete/term-metadata/term-
 import { registerHoverHandler } from "./business/autocomplete/hover/handler.js";
 import { computeWorkspaceCoverage } from "./data/shacl/coverage.js";
 import { RemoteTermCodeActionProvider } from "./business/validation/turtle/remote-term-code-actions.js";
+import { PrefixDeclarationCodeActionProvider } from "./business/validation/prefix-declaration-code-actions.js";
 import { normalizeNamespaceIri } from "./business/autocomplete/term-completion/remote-term-cache.js";
 
 // Create a connection for the server, using Node's IPC as a transport.
@@ -751,12 +752,14 @@ connection.onExecuteCommand(async (params) => {
 });
 
 const remoteTermCodeActions = new RemoteTermCodeActionProvider();
+const prefixDeclarationCodeActions = new PrefixDeclarationCodeActionProvider(prefixRegistry, documents);
 
 const codeActionProviders: ((
   p: CodeActionParams,
 ) => CodeAction[] | Promise<CodeAction[]>)[] = [
   refactor.provideCodeActions,
   (params) => remoteTermCodeActions.provideCodeActions(params),
+  (params) => prefixDeclarationCodeActions.provideCodeActions(params),
 ];
 
 connection.onCodeAction(

@@ -109,7 +109,7 @@ export class RemoteTermCache {
 
 	public getInfo(prefix: string, term: string, namespaceIri?: string): RemoteTermInfo | undefined {
 		const baseIri = this.getRegisteredNamespace(prefix, namespaceIri);
-		if (!baseIri) return undefined;
+		if (!baseIri) {return undefined;}
 
 		const cached = this.getReadySnapshot(baseIri);
 		return cached?.infoByTerm.get(term) ? infoWithPrefix(cached.infoByTerm.get(term)!, prefix) : undefined;
@@ -117,7 +117,7 @@ export class RemoteTermCache {
 
 	public getCachedTermsForPrefix(prefix: string, namespaceIri?: string): Set<string> | undefined {
 		const baseIri = this.getRegisteredNamespace(prefix, namespaceIri);
-		if (!baseIri) return undefined;
+		if (!baseIri) {return undefined;}
 
 		const cached = this.getReadySnapshot(baseIri);
 		return cached ? new Set(cached.terms) : undefined;
@@ -127,16 +127,16 @@ export class RemoteTermCache {
 		try {
 			await this.get(`${prefix}:`, connection, namespaceIri, { ...options, silent: true });
 		} catch {
-			// Remote vocabulary hints are best-effort and must not block validation.
+			// 
 		}
 	}
 
 	public async ensureInfo(prefix: string, term: string, namespaceIri?: string): Promise<RemoteTermInfo | undefined> {
 		const baseIri = await this.resolveRegisteredNamespace(prefix, namespaceIri);
-		if (!baseIri) return undefined;
+		if (!baseIri) {return undefined;}
 
 		const cached = this.getInfo(prefix, term, baseIri);
-		if (cached && cached.vocabulary.roles.length > 0) return cached;
+		if (cached && cached.vocabulary.roles.length > 0) {return cached;}
 
 		const termIri = `${baseIri}${term}`;
 		const vocabularyPromise = this.ensureVocabulary(prefix, baseIri).catch(() => emptySnapshot(baseIri));
@@ -276,10 +276,10 @@ export class RemoteTermCache {
 	private mergeTermIntoVocabulary(prefix: string, baseIri: string, term: string, info: RemoteTermInfo): void {
 		const key = normalizeNamespaceIri(baseIri);
 		const cached = this.vocabularyCache.get(key);
-		if (!cached || cached instanceof Promise) return;
+		if (!cached || cached instanceof Promise) {return;}
 		const existing = cached.infoByTerm.get(term);
 		const vocabulary = mergeVocabularyInfos(existing?.vocabulary, info.vocabulary);
-		if (!vocabulary) return;
+		if (!vocabulary) {return;}
 		cached.terms.add(term);
 		cached.infoByTerm.set(term, { prefix, term, vocabulary });
 		cached.source = sourceForMerge(cached.source, 'remote');
