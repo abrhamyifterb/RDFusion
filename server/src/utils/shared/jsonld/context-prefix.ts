@@ -1,5 +1,5 @@
 import type { Node } from "jsonc-parser";
-import type { TermDef } from "../../../data/jsonld/active-context-resolver";
+import type { ResolvedContext, TermDef } from "../../../data/jsonld/active-context-resolver";
 
 function rawNodeText(text: string, node: Node | undefined): string | undefined {
   return node ? text.slice(node.offset, node.offset + node.length) : undefined;
@@ -176,6 +176,8 @@ function resolveVocabValue(
 export interface JsonLdLocalContextState {
   contextMap: Map<string, string>;
   prefixMap: Map<string, string>;
+  /** Full active term definitions, including @type/@container metadata. */
+  terms: Map<string, TermDef>;
   vocab?: string;
   keywordAliases: Map<string, Set<string>>;
   scopedContextByTerm: Map<string, Node>;
@@ -191,6 +193,7 @@ function cloneState(state: JsonLdLocalContextState): JsonLdLocalContextState {
   return {
     contextMap: new Map(state.contextMap),
     prefixMap: new Map(state.prefixMap),
+    terms: new Map(state.terms),
     vocab: state.vocab,
     keywordAliases: new Map(
       Array.from(state.keywordAliases.entries(), ([keyword, aliases]) => [
@@ -201,6 +204,41 @@ function cloneState(state: JsonLdLocalContextState): JsonLdLocalContextState {
     scopedContextByTerm: new Map(state.scopedContextByTerm),
     hasContext: state.hasContext,
   };
+}
+
+export function emptyJsonLdLocalContextState(): JsonLdLocalContextState {
+  return {
+    contextMap: new Map<string, string>(),
+    prefixMap: new Map<string, string>(),
+    terms: new Map<string, TermDef>(),
+    keywordAliases: new Map<string, Set<string>>(),
+    scopedContextByTerm: new Map<string, Node>(),
+    hasContext: false,
+  };
+}
+
+export function jsonLdStateFromResolvedContext(
+  resolved: ResolvedContext | undefined,
+): JsonLdLocalContextState {
+  const state = emptyJsonLdLocalContextState();
+  if (!resolved) return state;
+
+  state.vocab = resolved.vocab;
+  state.hasContext = true;
+  for (const [term, def] of resolved.terms) {
+    state.terms.set(term, { ...def });
+    const id = def["@id"];
+    if (id == null) continue;
+    state.contextMap.set(term, id);
+    if (id.startsWith("@")) {
+      addAlias(state, id, term);
+      continue;
+    }
+    if (isJsonLdPrefixTermDefinition(term, def)) {
+      state.prefixMap.set(term, id);
+    }
+  }
+  return state;
 }
 
 function removeAlias(state: JsonLdLocalContextState, term: string): void {
@@ -237,6 +275,56 @@ function objectPropertyValue(
   return undefined;
 }
 
+function objectStringProperty(
+  text: string,
+  object: Node | undefined,
+  key: string,
+): string | undefined {
+  return jsonStringNodeValue(text, objectPropertyValue(text, object, key));
+}
+
+function objectStringArrayProperty(
+  text: string,
+  object: Node | undefined,
+  key: string,
+): string[] | undefined {
+  const node = objectPropertyValue(text, object, key);
+  if (!node) return undefined;
+  if (node.type === "string") {
+    const value = jsonStringNodeValue(text, node);
+    return value === undefined ? undefined : [value];
+  }
+  if (node.type !== "array") return undefined;
+  const values: string[] = [];
+  for (const child of node.children ?? []) {
+    const value = jsonStringNodeValue(text, child);
+    if (value !== undefined) values.push(value);
+  }
+  return values.length > 0 ? values.sort() : undefined;
+}
+
+function buildLocalTermDef(
+  text: string,
+  term: string,
+  value: Node | undefined,
+  iri: string,
+  prefix: boolean,
+  state: JsonLdLocalContextState,
+): TermDef {
+  const rawType = objectStringProperty(text, value, "@type");
+  const direction = objectStringProperty(text, value, "@direction");
+  return {
+    "@id": iri,
+    "@type": resolveTermIriValue(rawType, state),
+    "@container": objectStringArrayProperty(text, value, "@container"),
+    "@language": objectStringProperty(text, value, "@language")?.toLowerCase(),
+    "@direction": direction === "ltr" || direction === "rtl" ? direction : undefined,
+    "@reverse": objectBooleanProperty(text, value, "@reverse") === true,
+    "@protected": objectBooleanProperty(text, value, "@protected") === true,
+    "@prefix": prefix,
+  };
+}
+
 function applyContextObject(
   state: JsonLdLocalContextState,
   context: Node,
@@ -267,6 +355,7 @@ function applyContextObject(
     if (rawValue === "null") {
       state.contextMap.delete(key);
       state.prefixMap.delete(key);
+      state.terms.delete(key);
       state.scopedContextByTerm.delete(key);
       removeAlias(state, key);
       continue;
@@ -274,10 +363,12 @@ function applyContextObject(
 
     const scopedContext = objectPropertyValue(text, value, "@context");
     const idNode = objectPropertyValue(text, value, "@id");
-    const iri = resolveTermIriValue(valueAsStringOrId(text, value), state);
+    const explicitIri = resolveTermIriValue(valueAsStringOrId(text, value), state);
+    const iri = explicitIri ?? (value?.type === "object" && state.vocab && !key.includes(":") ? `${state.vocab}${key}` : undefined);
     if (rawNodeText(text, idNode) === "null") {
       state.contextMap.delete(key);
       state.prefixMap.delete(key);
+      state.terms.delete(key);
       removeAlias(state, key);
       if (scopedContext) {
         state.scopedContextByTerm.set(key, scopedContext);
@@ -302,13 +393,15 @@ function applyContextObject(
       state.scopedContextByTerm.delete(key);
     }
     removeAlias(state, key);
+    const isPrefix = isLocalPrefixDefinition(text, key, value, iri);
+    state.terms.set(key, buildLocalTermDef(text, key, value, iri, isPrefix, state));
     if (iri.startsWith("@")) {
       addAlias(state, iri, key);
       state.prefixMap.delete(key);
       continue;
     }
 
-    if (isLocalPrefixDefinition(text, key, value, iri)) {
+    if (isPrefix) {
       state.prefixMap.set(key, iri);
     } else {
       state.prefixMap.delete(key);
@@ -326,6 +419,7 @@ function applyContextValueToState(
   if (rawNodeText(text, value) === "null") {
     state.contextMap.clear();
     state.prefixMap.clear();
+    state.terms.clear();
     state.keywordAliases.clear();
     state.scopedContextByTerm.clear();
     state.vocab = undefined;
@@ -362,18 +456,19 @@ function nodeContainsOffset(node: Node | undefined, offset: number): boolean {
 /**
  * Lightweight local active-context resolver for editor helpers. It applies
  * inline @context declarations on ancestor objects of the requested offset.
- * This intentionally avoids remote context loading and full scoped-context
- * processing; the JSON-LD parser remains the authority for full expansion.
+ * Remote context loading still belongs to the JSON-LD parser; callers can seed
+ * this helper with the parser's resolved context when they have one.
  */
 export function findJsonLdLocalContextAt(
   root: Node | undefined,
   text: string,
   offset: number,
-  base?: Partial<Pick<JsonLdLocalContextState, 'contextMap' | 'prefixMap' | 'vocab' | 'keywordAliases' | 'scopedContextByTerm'>>,
+  base?: Partial<Pick<JsonLdLocalContextState, 'contextMap' | 'prefixMap' | 'terms' | 'vocab' | 'keywordAliases' | 'scopedContextByTerm' | 'hasContext'>>,
 ): JsonLdLocalContextState {
   const state: JsonLdLocalContextState = {
     contextMap: new Map<string, string>(base?.contextMap ?? []),
     prefixMap: new Map<string, string>(base?.prefixMap ?? []),
+    terms: new Map<string, TermDef>(base?.terms ?? []),
     vocab: base?.vocab,
     keywordAliases: new Map<string, Set<string>>(
       Array.from(base?.keywordAliases?.entries() ?? [], ([keyword, aliases]) => [
@@ -382,7 +477,7 @@ export function findJsonLdLocalContextAt(
       ]),
     ),
     scopedContextByTerm: new Map<string, Node>(base?.scopedContextByTerm ?? []),
-    hasContext: false,
+    hasContext: base?.hasContext ?? false,
   };
 
   const walk = (
@@ -460,9 +555,10 @@ export function findJsonLdKeywordAliasesAt(
   text: string,
   keyword: string,
   offset: number,
+  initial?: JsonLdLocalContextState,
 ): Set<string> {
   return (
-    findJsonLdLocalContextAt(root, text, offset).keywordAliases.get(keyword) ??
+    findJsonLdLocalContextAt(root, text, offset, initial).keywordAliases.get(keyword) ??
     new Set<string>()
   );
 }

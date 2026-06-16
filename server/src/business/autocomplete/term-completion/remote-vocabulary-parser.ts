@@ -3,6 +3,12 @@ import {
 	OWL_EQUIVALENT_CLASS,
 	OWL_EQUIVALENT_PROPERTY,
 	OWL_INVERSE_OF,
+	OWL_DEPRECATED,
+	OWL_IMPORTS,
+	OWL_PROPERTY_DISJOINT_WITH,
+	OWL_SAME_AS,
+	OWL_VERSION_INFO,
+	OWL_VERSION_IRI,
 	RDF_CLASS_TYPES,
 	RDF_COMMENT_PREDICATES,
 	RDF_NOTE_PREDICATES,
@@ -15,7 +21,6 @@ import {
 	RDFS_SEE_ALSO,
 	RDFS_SUB_CLASS_OF,
 	RDFS_SUB_PROPERTY_OF,
-	SKOS_EXAMPLE,
 	VS_TERM_STATUS,
 } from '../../../data/rdf/rdf-vocabulary';
 import { rdfLiteralText, rdfTermType, rdfTermValue } from '../../../data/rdf/rdf-term-utils';
@@ -132,22 +137,25 @@ export class RemoteVocabularyParser {
 				if (RDF_NOTE_PREDICATES.has(predicate)) {
 					subjectInfo.notes.add(literal);
 				}
-				if (predicate === SKOS_EXAMPLE) {
-					subjectInfo.examples.add(literal);
-				}
 				if (predicate === VS_TERM_STATUS) {
 					subjectInfo.status.add(literal);
 				}
+				if (predicate === OWL_VERSION_INFO) {
+					subjectInfo.notes.add(`Version: ${literal}`);
+				}
+				if (predicate === OWL_DEPRECATED && !/^(false|0)$/i.test(literal)) {
+					subjectInfo.status.add(/^true$/i.test(literal) ? 'deprecated' : `deprecated: ${literal}`);
+				}
 			}
 
-			if (subjectInfo && object) {
+			if (subjectInfo && rdfTermType(quad.object) === 'NamedNode') {
 				if (predicate === RDFS_DOMAIN) subjectInfo.domains.add(formatTerm(object));
 				if (predicate === RDFS_RANGE) subjectInfo.ranges.add(formatTerm(object));
 				if (predicate === RDFS_SUB_CLASS_OF) subjectInfo.subClassOf.add(formatTerm(object));
 				if (predicate === RDFS_SUB_PROPERTY_OF) subjectInfo.subPropertyOf.add(formatTerm(object));
-				if (predicate === OWL_EQUIVALENT_CLASS || predicate === OWL_EQUIVALENT_PROPERTY) subjectInfo.equivalentTerms.add(formatTerm(object));
+				if (predicate === OWL_EQUIVALENT_CLASS || predicate === OWL_EQUIVALENT_PROPERTY || predicate === OWL_SAME_AS) subjectInfo.equivalentTerms.add(formatTerm(object));
 				if (predicate === OWL_INVERSE_OF) subjectInfo.inverseOf.add(formatTerm(object));
-				if (predicate === RDFS_SEE_ALSO) subjectInfo.seeAlso.add(formatTerm(object));
+				if (predicate === RDFS_SEE_ALSO || predicate === OWL_IMPORTS || predicate === OWL_VERSION_IRI || predicate === OWL_PROPERTY_DISJOINT_WITH) subjectInfo.seeAlso.add(formatTerm(object));
 				if (predicate === RDFS_IS_DEFINED_BY) subjectInfo.isDefinedBy.add(formatTerm(object));
 			}
 		}

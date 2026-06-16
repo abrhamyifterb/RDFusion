@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type {
   Connection,
   Hover,
@@ -5,25 +6,39 @@ import type {
 } from "vscode-languageserver/node.js";
 import { MarkupKind } from "vscode-languageserver/node.js";
 import type { TextDocument } from "vscode-languageserver-textdocument";
+import type { DataManager } from "../../../data/data-manager.js";
+import type { JsonldParsedGraph } from "../../../data/irdf-parser.js";
 import { findNodeAtOffset, parseTree, type Node } from "jsonc-parser";
 import type {
   TermMetadata,
   TermMetadataService,
 } from "../term-metadata/term-metadata-service.js";
 import type { PerformanceTracer } from "../../../utils/performance-trace.js";
+import { isJsonLdLikeDocument } from "../../../utils/shared/jsonld/document-detection.js";
 import {
   findJsonLdContextValues,
   findJsonLdLocalContextAt,
+  jsonLdStateFromResolvedContext,
   jsonStringNodeValue,
+  type JsonLdLocalContextState,
 } from "../../../utils/shared/jsonld/context-prefix.js";
 
 const REMOTE_HOVER_BUDGET_MS = 1200;
+
+interface JsonLdContextInfo {
+  term: string;
+  iri?: string;
+  type?: string;
+  container?: string[];
+}
 
 interface HoverTerm {
   prefix: string;
   term: string;
   namespaceIri?: string;
   curie: string;
+  iri?: string;
+  jsonLdContext?: JsonLdContextInfo;
 }
 
 function wordAt(text: string, offset: number): string | undefined {
@@ -33,6 +48,24 @@ function wordAt(text: string, offset: number): string | undefined {
   const right = text.slice(safeOffset).match(/^[\w-]*/)?.[0] ?? "";
   const value = `${left}${right}`;
   return value.includes(":") ? value : undefined;
+}
+
+function isHttpIri(value: string): boolean {
+  return /^https?:\/\/[^\s<>"{}|^`]+$/i.test(value);
+}
+
+function findAngleBracketIriAt(
+  text: string,
+  offset: number,
+): string | undefined {
+  const safeOffset = Math.max(0, Math.min(offset, text.length));
+  const start = text.lastIndexOf("<", safeOffset);
+  const end = text.indexOf(">", safeOffset);
+  if (start < 0 || end < 0 || start > safeOffset || end < safeOffset) {
+    return undefined;
+  }
+  const iri = text.slice(start + 1, end);
+  return isHttpIri(iri) ? iri : undefined;
 }
 
 function withBudget<T>(
@@ -114,7 +147,7 @@ function nodeValueContainsOffset(
 ): boolean {
   if (!value) return false;
   if (containsOffset(value, offset)) return true;
-  return (value.children ?? []).some((child) =>
+  return (value.children ?? []).some((child: Node) =>
     nodeValueContainsOffset(child, offset),
   );
 }
@@ -124,10 +157,11 @@ function isTypeKey(
   text: string,
   key: string | undefined,
   node: Node,
+  initialContext?: JsonLdLocalContextState,
 ): boolean {
   if (!key) return false;
   if (key === "@type") return true;
-  const active = findJsonLdLocalContextAt(root, text, node.offset);
+  const active = findJsonLdLocalContextAt(root, text, node.offset, initialContext);
   return (
     active.keywordAliases.get("@type")?.has(key) ??
     active.contextMap.get(key) === "@type"
@@ -139,8 +173,22 @@ function termForStringValue(
   text: string,
   node: Node,
   value: string,
+  initialContext?: JsonLdLocalContextState,
 ): HoverTerm | undefined {
-  const active = findJsonLdLocalContextAt(root, text, node.offset);
+  if (isHttpIri(value)) {
+    const iriParts = splitIri(value);
+    if (iriParts) {
+      return {
+        prefix: "@iri",
+        term: iriParts.term,
+        namespaceIri: iriParts.namespaceIri,
+        curie: value,
+        iri: value,
+      };
+    }
+  }
+
+  const active = findJsonLdLocalContextAt(root, text, node.offset, initialContext);
   const parts = splitCurie(value);
   if (parts) {
     const namespaceIri = active.prefixMap.get(parts.prefix);
@@ -168,25 +216,46 @@ function termForPropertyKey(
   text: string,
   keyNode: Node,
   key: string,
+  initialContext?: JsonLdLocalContextState,
 ): HoverTerm | undefined {
   if (!key || key.startsWith("@") || isInsideContext(root, text, keyNode))
     return undefined;
-  const active = findJsonLdLocalContextAt(root, text, keyNode.offset);
+  if (isHttpIri(key)) {
+    const iriParts = splitIri(key);
+    if (iriParts) {
+      return {
+        prefix: "@iri",
+        term: iriParts.term,
+        namespaceIri: iriParts.namespaceIri,
+        curie: key,
+        iri: key,
+      };
+    }
+  }
+  const active = findJsonLdLocalContextAt(root, text, keyNode.offset, initialContext);
   const parts = splitCurie(key);
   if (parts) {
     const namespaceIri = active.prefixMap.get(parts.prefix);
     return namespaceIri ? { ...parts, namespaceIri, curie: key } : undefined;
   }
 
-  const mapped = active.contextMap.get(key);
+  const termDef = active.terms.get(key);
+  const mapped = termDef?.["@id"] ?? active.contextMap.get(key);
   if (mapped && !mapped.startsWith("@")) {
     const iriParts = splitIri(mapped);
     if (iriParts) {
       return {
-        prefix: "@vocab",
+        prefix: "@iri",
         term: iriParts.term,
         namespaceIri: iriParts.namespaceIri,
         curie: key,
+        iri: mapped,
+        jsonLdContext: {
+          term: key,
+          iri: mapped,
+          type: termDef?.["@type"],
+          container: termDef?.["@container"],
+        },
       };
     }
   }
@@ -205,6 +274,7 @@ function termForPropertyKey(
 function resolveJsonLdHoverTerm(
   document: TextDocument,
   offset: number,
+  initialContext?: JsonLdLocalContextState,
 ): HoverTerm | undefined {
   const text = document.getText();
   const root = parseTree(text, [], {
@@ -225,7 +295,7 @@ function resolveJsonLdHoverTerm(
 
   const parent = node.parent;
   if (parent?.type === "property" && parent.children?.[0] === node) {
-    return termForPropertyKey(root, text, node, value);
+    return termForPropertyKey(root, text, node, value, initialContext);
   }
 
   if (isInsideContext(root, text, node)) return undefined;
@@ -241,9 +311,22 @@ function resolveJsonLdHoverTerm(
   if (
     property &&
     nodeValueContainsOffset(valueNode, offset) &&
-    isTypeKey(root, text, key, node)
+    isTypeKey(root, text, key, node, initialContext)
   ) {
-    return termForStringValue(root, text, node, value);
+    return termForStringValue(root, text, node, value, initialContext);
+  }
+
+  if (isHttpIri(value)) {
+    const iriParts = splitIri(value);
+    if (iriParts) {
+      return {
+        prefix: "@iri",
+        term: iriParts.term,
+        namespaceIri: iriParts.namespaceIri,
+        curie: value,
+        iri: value,
+      };
+    }
   }
   return undefined;
 }
@@ -251,10 +334,26 @@ function resolveJsonLdHoverTerm(
 function findDocumentHoverTerm(
   document: TextDocument,
   offset: number,
+  initialContext?: JsonLdLocalContextState,
+  jsonLdLike = false,
 ): HoverTerm | undefined {
   const text = document.getText();
-  if (document.languageId === "jsonld") {
-    return resolveJsonLdHoverTerm(document, offset);
+  if (jsonLdLike) {
+    return resolveJsonLdHoverTerm(document, offset, initialContext);
+  }
+
+  const iri = findAngleBracketIriAt(text, offset);
+  if (iri) {
+    const iriParts = splitIri(iri);
+    if (iriParts) {
+      return {
+        prefix: "@iri",
+        term: iriParts.term,
+        namespaceIri: iriParts.namespaceIri,
+        curie: iri,
+        iri,
+      };
+    }
   }
 
   const curie = wordAt(text, offset);
@@ -268,26 +367,108 @@ function findDocumentHoverTerm(
   return { prefix, term, namespaceIri, curie };
 }
 
+async function jsonLdParsedGraphFromSnapshot(
+  dataManager: DataManager | undefined,
+  document: TextDocument,
+): Promise<JsonldParsedGraph | undefined> {
+  if (!isJsonLdLikeDocument(document.uri, document.languageId, document.getText())) {
+    return undefined;
+  }
+
+  const snapshot = dataManager
+    ? await dataManager
+        .ensureCurrentSnapshot(
+          document.uri,
+          document.getText(),
+          document.version,
+          document.languageId,
+        )
+        .catch(() => undefined)
+    : undefined;
+
+  if (
+    !snapshot ||
+    snapshot.version !== document.version ||
+    snapshot.fileType !== "jsonld"
+  ) {
+    return undefined;
+  }
+  return snapshot.parsedGraph as JsonldParsedGraph;
+}
+
+function code(value: string): string {
+  return `\`${value.replace(/`/g, "\\`")}\``;
+}
+
+function markdownForJsonLdContext(info: JsonLdContextInfo): string {
+  const lines = [`**${info.term}**`];
+  const summary: string[] = [];
+  if (info.iri) {
+    summary.push(`- **IRI:** ${code(info.iri)}`);
+  }
+  const jsonLd: string[] = [];
+  if (info.type) jsonLd.push(`@type: ${code(info.type)}`);
+  if (info.container?.length) {
+    jsonLd.push(`@container: ${info.container.map(code).join(", ")}`);
+  }
+  if (jsonLd.length) {
+    summary.push(`- **JSON-LD:** ${jsonLd.join(", ")}`);
+  }
+  summary.push("- **Metadata source:** JSON-LD context");
+  lines.push("", ...summary);
+  return lines.join("\n");
+}
+
+function appendJsonLdContextMarkdown(
+  documentation: string,
+  context: JsonLdContextInfo | undefined,
+): string {
+  if (!context || (!context.type && !context.container?.length)) {
+    return documentation;
+  }
+  const parts: string[] = [];
+  if (context.type) parts.push(`@type: ${code(context.type)}`);
+  if (context.container?.length) {
+    parts.push(`@container: ${context.container.map(code).join(", ")}`);
+  }
+  return `${documentation}\n\n**JSON-LD context**\n- ${parts.join("\n- ")}`;
+}
+
 export function registerHoverHandler(
   connection: Connection,
   documents: TextDocuments<TextDocument>,
   termMetadata: TermMetadataService,
   tracer?: PerformanceTracer,
+  dataManager?: DataManager,
 ): void {
-  connection.onHover(async (params): Promise<Hover | undefined> => {
+  connection.onHover(async (params: any): Promise<Hover | undefined> => {
     const document = documents.get(params.textDocument.uri);
     if (!document) {
       return undefined;
     }
 
     const offset = document.offsetAt(params.position);
-    const hoverTerm = findDocumentHoverTerm(document, offset);
+    const jsonLdLike = isJsonLdLikeDocument(
+      document.uri,
+      document.languageId,
+      document.getText(),
+    );
+    const jsonLdGraph = await jsonLdParsedGraphFromSnapshot(dataManager, document);
+    const initialContext = jsonLdStateFromResolvedContext(
+      jsonLdGraph?.resolvedContext,
+    );
+    const hoverTerm = findDocumentHoverTerm(
+      document,
+      offset,
+      initialContext,
+      jsonLdLike,
+    );
     if (!hoverTerm) {
       return undefined;
     }
 
     const syntax: "jsonld" | "turtle" | undefined =
-      document.languageId === "jsonld"
+      jsonLdLike
         ? "jsonld"
         : document.languageId === "turtle"
           ? "turtle"
@@ -298,13 +479,20 @@ export function registerHoverHandler(
         : {}),
       ...(syntax ? { syntax } : {}),
     };
-    const cached = termMetadata.getMetadata(
-      hoverTerm.prefix,
-      hoverTerm.term,
-      options,
-    );
-    const asyncInfo =
-      "getMetadataAsync" in termMetadata
+    const cached = hoverTerm.iri
+      ? termMetadata.getMetadataForIri(hoverTerm.iri, {
+          ...options,
+          displayName: hoverTerm.curie,
+        })
+      : termMetadata.getMetadata(hoverTerm.prefix, hoverTerm.term, options);
+    const asyncInfo = hoverTerm.iri
+      ? "getMetadataForIriAsync" in termMetadata
+        ? termMetadata.getMetadataForIriAsync(hoverTerm.iri, {
+            ...options,
+            displayName: hoverTerm.curie,
+          })
+        : Promise.resolve(cached)
+      : "getMetadataAsync" in termMetadata
         ? termMetadata.getMetadataAsync(
             hoverTerm.prefix,
             hoverTerm.term,
@@ -317,6 +505,14 @@ export function registerHoverHandler(
       REMOTE_HOVER_BUDGET_MS,
     );
     if (!info) {
+      if (hoverTerm.jsonLdContext) {
+        return {
+          contents: {
+            kind: MarkupKind.Markdown,
+            value: markdownForJsonLdContext(hoverTerm.jsonLdContext),
+          },
+        };
+      }
       return undefined;
     }
 
@@ -329,7 +525,10 @@ export function registerHoverHandler(
     return {
       contents: {
         kind: MarkupKind.Markdown,
-        value: info.documentation ?? info.detail,
+        value: appendJsonLdContextMarkdown(
+          info.documentation ?? info.detail,
+          hoverTerm.jsonLdContext,
+        ),
       },
     };
   });

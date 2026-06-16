@@ -49,6 +49,7 @@ export interface CompletionMetadataOptions {
   namespaceIri?: string;
   syntax?: "turtle" | "jsonld";
   shaclSelection?: ShaclSelectionSettings;
+  displayName?: string;
 }
 
 function uniq<T>(values: T[]): T[] {
@@ -94,33 +95,77 @@ function linkOrCode(value: string): string {
   return `[${escapeMarkdown(value)}](${target})`;
 }
 
-function listInline(
-  values: string[] | undefined,
-  limit = 5,
-): string | undefined {
-  if (!values?.length) return undefined;
-  const shown = values
-    .slice(0, limit)
-    .map(linkOrCode)
-    .join(", ");
-  const more = values.length > limit ? `, +${values.length - limit} more` : "";
-  return `${shown}${more}`;
+function uniqueMetadataValues(values: string[] | undefined): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of values ?? []) {
+    const value = raw.trim();
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    out.push(value);
+  }
+  return out;
+}
+
+function shaclPropertyKey(prop: ShapePropertyMetadata): string {
+  return JSON.stringify({
+    path: prop.path,
+    pathDisplay: prop.pathDisplay,
+    label: prop.label,
+    summary: prop.summary,
+    shapeId: prop.shapeId,
+    shapeLabel: prop.shapeLabel,
+    shapeName: prop.shapeName,
+    sourceUri: prop.sourceUri,
+    targets: uniqueMetadataValues(prop.targetDisplays),
+  });
+}
+
+function dedupeShaclProperties(
+  properties: ShapePropertyMetadata[] | undefined,
+): ShapePropertyMetadata[] {
+  const seen = new Set<string>();
+  const out: ShapePropertyMetadata[] = [];
+  for (const prop of properties ?? []) {
+    const key = shaclPropertyKey(prop);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      ...prop,
+      targetDisplays: uniqueMetadataValues(prop.targetDisplays),
+    });
+  }
+  return out;
+}
+
+function listInline(values: string[] | undefined): string | undefined {
+  const unique = uniqueMetadataValues(values);
+  if (!unique.length) return undefined;
+  return unique.map(linkOrCode).join(", ");
 }
 
 function pushField(
   lines: string[],
   label: string,
   values: string[] | undefined,
-  limit = 5,
 ): void {
-  const rendered = listInline(values, limit);
+  const rendered = listInline(values);
   if (rendered) {
     lines.push(`- **${label}:** ${rendered}`);
   }
 }
 
+function splitIri(value: string): { namespaceIri: string; term: string } | undefined {
+  const hash = value.lastIndexOf("#");
+  const slash = value.lastIndexOf("/");
+  const sep = Math.max(hash, slash);
+  if (sep < 0 || sep === value.length - 1) return undefined;
+  return { namespaceIri: value.slice(0, sep + 1), term: value.slice(sep + 1) };
+}
+
 function displayName(prefix: string, term: string): string {
-  return prefix === "@vocab" ? term : `${prefix}:${term}`;
+  if (prefix === "@vocab" || prefix === "@iri") return term;
+  return `${prefix}:${term}`;
 }
 
 function bestLabel(metadata: TermMetadata): string {
@@ -193,6 +238,53 @@ export class TermMetadataService {
     return this.getMetadata(prefix, term, options) ?? cached;
   }
 
+  async getMetadataForIriAsync(
+    iri: string,
+    options: CompletionMetadataOptions = {},
+  ): Promise<TermMetadata | undefined> {
+    const cached = this.getMetadataForIri(iri, options);
+    const parts = this.partsForIri(iri);
+    if (!parts) return cached;
+    return await this.getMetadataAsync(parts.prefix, parts.term, {
+      ...options,
+      namespaceIri: parts.namespaceIri,
+      displayName: options.displayName ?? iri,
+    }) ?? cached;
+  }
+
+  getMetadataForIri(
+    iri: string,
+    options: CompletionMetadataOptions = {},
+  ): TermMetadata | undefined {
+    const parts = this.partsForIri(iri);
+    if (!parts) return undefined;
+    return this.getMetadata(parts.prefix, parts.term, {
+      ...options,
+      namespaceIri: parts.namespaceIri,
+      displayName: options.displayName ?? iri,
+    });
+  }
+
+  private partsForIri(
+    iri: string,
+  ): { prefix: string; term: string; namespaceIri: string } | undefined {
+    if (!isHttpIri(iri)) return undefined;
+
+    const knownPrefix = this.prefixRegistry.getPrefix(iri);
+    const knownBase = knownPrefix ? this.prefixRegistry.getIri(knownPrefix) : undefined;
+    if (knownPrefix && knownBase && iri.startsWith(knownBase)) {
+      const term = iri.slice(knownBase.length);
+      if (term) {
+        return { prefix: knownPrefix, term, namespaceIri: knownBase };
+      }
+    }
+
+    const split = splitIri(iri);
+    return split
+      ? { prefix: "@iri", term: split.term, namespaceIri: split.namespaceIri }
+      : undefined;
+  }
+
   getMetadata(
     prefix: string,
     term: string,
@@ -236,7 +328,7 @@ export class TermMetadataService {
       return undefined;
     }
 
-    const curie = displayName(prefix, term);
+    const curie = options.displayName ?? displayName(prefix, term);
     const vocabularyRole = roleSummary(vocabulary);
     const label = vocabulary?.labels?.[0];
     const detailParts = [
@@ -323,7 +415,7 @@ export class TermMetadataService {
       summary.push(`- **Kind:** ${escapeMarkdown(role)}`);
     }
 
-    const status = listInline(vocabulary?.status, 3);
+    const status = listInline(vocabulary?.status);
     if (status) {
       summary.push(`- **Status:** ${status}`);
     }
@@ -343,43 +435,40 @@ export class TermMetadataService {
 
     if (vocabulary?.comments.length) {
       lines.push("", "**Description**");
-      for (const comment of vocabulary.comments.slice(0, 2)) {
+      for (const comment of uniqueMetadataValues(vocabulary.comments)) {
         lines.push(`- ${comment}`);
       }
     }
 
     if (vocabulary?.notes.length) {
       lines.push("", "**Notes**");
-      for (const note of vocabulary.notes.slice(0, 2)) {
+      for (const note of uniqueMetadataValues(vocabulary.notes)) {
         lines.push(`- ${note}`);
       }
     }
 
     const details: string[] = [];
-    pushField(details, "Types", vocabulary?.types, 6);
-    pushField(details, "Domain", vocabulary?.domains, 6);
-    pushField(details, "Range", vocabulary?.ranges, 6);
-    pushField(details, "Subclass of", vocabulary?.subClassOf, 4);
-    pushField(details, "Subproperty of", vocabulary?.subPropertyOf, 4);
-    pushField(details, "Equivalent to", vocabulary?.equivalentTerms, 4);
-    pushField(details, "Inverse of", vocabulary?.inverseOf, 4);
+    pushField(details, "Types", vocabulary?.types);
+    pushField(details, "Domain", vocabulary?.domains);
+    pushField(details, "Range", vocabulary?.ranges);
+    pushField(details, "Subclass of", vocabulary?.subClassOf);
+    pushField(details, "Subproperty of", vocabulary?.subPropertyOf);
+    pushField(details, "Equivalent to", vocabulary?.equivalentTerms);
+    pushField(details, "Inverse of", vocabulary?.inverseOf);
     if (details.length) {
       lines.push("", "**Vocabulary details**", ...details);
     }
 
     if (vocabulary?.examples.length) {
       lines.push("", "**Examples**");
-      for (const example of vocabulary.examples.slice(0, 3)) {
+      for (const example of uniqueMetadataValues(vocabulary.examples)) {
         lines.push(`- ${example}`);
-      }
-      if (vocabulary.examples.length > 3) {
-        lines.push(`- +${vocabulary.examples.length - 3} more`);
       }
     }
 
     if (metadata.shaclProperties?.length) {
       lines.push("", "**SHACL guidance**");
-      for (const prop of metadata.shaclProperties.slice(0, 5)) {
+      for (const prop of dedupeShaclProperties(metadata.shaclProperties)) {
         const shape = prop.shapeName ?? prop.shapeLabel ?? prop.shapeId;
         const summaryText =
           prop.summary && prop.summary !== prop.pathDisplay
@@ -388,20 +477,15 @@ export class TermMetadataService {
         lines.push(`- **${escapeMarkdown(prop.label)}** in ${code(shape)}${summaryText}`);
         if (prop.targetDisplays.length) {
           lines.push(
-            `  - Targets: ${prop.targetDisplays.slice(0, 3).map(code).join(", ")}`,
+            `  - Targets: ${prop.targetDisplays.map(code).join(", ")}`,
           );
         }
-      }
-      if (metadata.shaclProperties.length > 5) {
-        lines.push(
-          `- +${metadata.shaclProperties.length - 5} additional selected SHACL property use(s)`,
-        );
       }
     }
 
     const references: string[] = [];
-    pushField(references, "See also", vocabulary?.seeAlso, 4);
-    pushField(references, "Defined by", vocabulary?.isDefinedBy, 4);
+    pushField(references, "See also", vocabulary?.seeAlso);
+    pushField(references, "Defined by", vocabulary?.isDefinedBy);
     if (references.length) {
       lines.push("", "**References**", ...references);
     }

@@ -12,6 +12,7 @@ import { rangeFromOffsets } from "../../utils/shared/jsonld/range-from-offsets";
 import { findJsonLdDefaultVocab, findJsonLdPrefixNamespaces, isJsonLdPrefixTermDefinition } from "../../utils/shared/jsonld/context-prefix";
 
 import { ActiveContextResolver, setResolvedContext } from "./active-context-resolver";
+import type { ResolvedContext } from "./active-context-resolver";
 
 import type { JsonldParsedGraph } from "../irdf-parser";
 import { getSharedDocumentLoader } from './auto-document-loader';
@@ -20,7 +21,8 @@ export class JsonLdParser {
 	private static readonly parseOptions = { allowTrailingComma: true, disallowComments: false };
 	private contextExtractor    = new ContextExtractor();
 	private definitionExtractor = new DefinitionExtractor();
-	private activeCtxResolver   = new ActiveContextResolver(); 
+
+	constructor(private activeCtxResolver = new ActiveContextResolver()) {}
 
 	async parse(text: string): Promise<JsonldParsedGraph> {
     if (text.trim() === "") {
@@ -61,9 +63,11 @@ export class JsonLdParser {
     let effectiveContextMap = localContextMap;
     let effectivePrefixMap = localPrefixMap;
     let effectiveVocab = localVocab;
+    let effectiveResolvedContext: ResolvedContext | undefined;
 
     try {
 		const resolved = await this.activeCtxResolver.resolveForDocument(jsonObj);
+		effectiveResolvedContext = resolved;
 		effectiveContextMap = new Map<string, string>();
 		effectivePrefixMap = new Map<string, string>();
 		for (const [term, def] of resolved.terms) {
@@ -128,6 +132,6 @@ export class JsonLdParser {
 
     new QuadPositionAttacher(idRanges).attach(quads);
 
-    return { text, ast, contextMap: effectiveContextMap, prefixMap: effectivePrefixMap, vocab: effectiveVocab, definitions, quads, diagnostics };
+    return { text, ast, contextMap: effectiveContextMap, prefixMap: effectivePrefixMap, vocab: effectiveVocab, resolvedContext: effectiveResolvedContext, definitions, quads, diagnostics };
 	}
 }

@@ -35,9 +35,16 @@ export const OWL_ANNOTATION_PROPERTY = `${OWL_NS}AnnotationProperty`;
 export const OWL_EQUIVALENT_CLASS = `${OWL_NS}equivalentClass`;
 export const OWL_EQUIVALENT_PROPERTY = `${OWL_NS}equivalentProperty`;
 export const OWL_INVERSE_OF = `${OWL_NS}inverseOf`;
+export const OWL_SAME_AS = `${OWL_NS}sameAs`;
+export const OWL_DEPRECATED = `${OWL_NS}deprecated`;
+export const OWL_VERSION_INFO = `${OWL_NS}versionInfo`;
+export const OWL_VERSION_IRI = `${OWL_NS}versionIRI`;
+export const OWL_IMPORTS = `${OWL_NS}imports`;
+export const OWL_PROPERTY_DISJOINT_WITH = `${OWL_NS}propertyDisjointWith`;
 
 export const SKOS_PREF_LABEL = `${SKOS_NS}prefLabel`;
 export const SKOS_ALT_LABEL = `${SKOS_NS}altLabel`;
+export const SKOS_HIDDEN_LABEL = `${SKOS_NS}hiddenLabel`;
 export const SKOS_DEFINITION = `${SKOS_NS}definition`;
 export const SKOS_NOTE = `${SKOS_NS}note`;
 export const SKOS_SCOPE_NOTE = `${SKOS_NS}scopeNote`;
@@ -46,7 +53,13 @@ export const SKOS_HISTORY_NOTE = `${SKOS_NS}historyNote`;
 export const SKOS_EDITORIAL_NOTE = `${SKOS_NS}editorialNote`;
 export const SKOS_CHANGE_NOTE = `${SKOS_NS}changeNote`;
 
+export const DCTERMS_TITLE = `${DCTERMS_NS}title`;
 export const DCTERMS_DESCRIPTION = `${DCTERMS_NS}description`;
+export const DC_TITLE = `${DC_NS}title`;
+export const DC_DESCRIPTION = `${DC_NS}description`;
+export const SCHEMA_NAME = `${SCHEMA_NS}name`;
+export const SCHEMA_DESCRIPTION = `${SCHEMA_NS}description`;
+export const FOAF_NAME = `${FOAF_NS}name`;
 
 export const VS_TERM_STATUS = `${VS_NS}term_status`;
 
@@ -73,6 +86,6 @@ export const SH_SHAPE = `${SH_NS}Shape`;
 export const RDF_PROPERTY_TYPES = new Set([RDF_PROPERTY, OWL_OBJECT_PROPERTY, OWL_DATATYPE_PROPERTY, OWL_ANNOTATION_PROPERTY]);
 export const RDF_CLASS_TYPES = new Set([RDFS_CLASS, OWL_CLASS]);
 export const SHACL_SHAPE_TYPES = new Set([SH_NODE_SHAPE, SH_PROPERTY_SHAPE, SH_SHAPE]);
-export const RDF_LABEL_PREDICATES = new Set([RDFS_LABEL, SKOS_PREF_LABEL, SKOS_ALT_LABEL]);
-export const RDF_COMMENT_PREDICATES = new Set([RDFS_COMMENT, SKOS_DEFINITION, DCTERMS_DESCRIPTION]);
+export const RDF_LABEL_PREDICATES = new Set([RDFS_LABEL, SKOS_PREF_LABEL, SKOS_ALT_LABEL, SKOS_HIDDEN_LABEL, DCTERMS_TITLE, DC_TITLE, SCHEMA_NAME, FOAF_NAME]);
+export const RDF_COMMENT_PREDICATES = new Set([RDFS_COMMENT, SKOS_DEFINITION, DCTERMS_DESCRIPTION, DC_DESCRIPTION, SCHEMA_DESCRIPTION]);
 export const RDF_NOTE_PREDICATES = new Set([SKOS_NOTE, SKOS_SCOPE_NOTE, SKOS_HISTORY_NOTE, SKOS_EDITORIAL_NOTE, SKOS_CHANGE_NOTE]);

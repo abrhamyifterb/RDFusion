@@ -13,6 +13,7 @@ import {
   snapshotToCachedParsedGraph,
 } from "./document-snapshot.js";
 import { PerformanceTracer } from "../utils/performance-trace.js";
+import { detectRDFusionFileType } from "../utils/shared/jsonld/document-detection.js";
 
 export interface DataManagerOptions {
   /** Maximum number of parsed document snapshots kept in the canonical store. */
@@ -59,19 +60,19 @@ export class DataManager {
     );
   }
 
-  findFileFormat(uri: string): RDFusionFileType {
-    const lower = uri.toLowerCase();
-    return lower.endsWith(".ttl")
-      ? "turtle"
-      : lower.endsWith(".jsonld")
-        ? "jsonld"
-        : "unknown";
+  findFileFormat(
+    uri: string,
+    text?: string,
+    languageId?: string,
+  ): RDFusionFileType {
+    return detectRDFusionFileType(uri, text, languageId);
   }
 
   async parseDocument(
     uri: string,
     text: string,
     version: number,
+    languageId?: string,
   ): Promise<ParsedGraph | JsonldParsedGraph> {
     const cached = this.getSnapshotInternal(uri, true);
     if (cached && cached.version === version) {
@@ -84,7 +85,7 @@ export class DataManager {
       return cached.parsedGraph;
     }
 
-    const fileType = this.findFileFormat(uri);
+    const fileType = this.findFileFormat(uri, text, languageId);
     const byteSize = Buffer.byteLength(text, "utf8");
     const parse = async () => {
       try {
@@ -116,6 +117,26 @@ export class DataManager {
     });
 
     return parsedGraph;
+  }
+
+  async ensureCurrentSnapshot(
+    uri: string,
+    text: string,
+    version: number,
+    languageId?: string,
+  ): Promise<DocumentSnapshot | undefined> {
+    const cached = this.getSnapshotInternal(uri, true);
+    if (cached && cached.version === version) {
+      return { ...cached };
+    }
+
+    const fileType = this.findFileFormat(uri, text, languageId);
+    if (fileType === "unknown") {
+      return undefined;
+    }
+
+    await this.parseDocument(uri, text, version, languageId);
+    return this.getSnapshot(uri);
   }
 
   getSnapshot(uri: string): DocumentSnapshot | undefined {

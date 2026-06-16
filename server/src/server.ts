@@ -61,6 +61,7 @@ import { computeWorkspaceCoverage } from "./data/shacl/coverage.js";
 import { RemoteTermCodeActionProvider } from "./business/validation/turtle/remote-term-code-actions.js";
 import { PrefixDeclarationCodeActionProvider } from "./business/validation/prefix-declaration-code-actions.js";
 import { normalizeNamespaceIri } from "./business/autocomplete/term-completion/remote-term-cache.js";
+import { isJsonLdLikeDocument } from "./utils/shared/jsonld/document-detection.js";
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -149,6 +150,7 @@ const jsonldTermProvider = new JsonLdTermCompletionProvider(
   connection,
   serverConfigSettings,
   termMetadataService,
+  dataManager,
 );
 
 const turtleFormatterCommand = new TurtleFormatterCommand(
@@ -543,7 +545,12 @@ async function runLatestDocumentIndex(
 
   try {
     performanceTracer.log(`document.${reason}.index.start`, { uri, version });
-    await workspaceIndexService.indexParsedRdf(uri, document.getText(), version);
+    await workspaceIndexService.indexParsedRdf(
+      uri,
+      document.getText(),
+      version,
+      document.languageId,
+    );
 
     const latest = documents.get(uri);
     if (
@@ -599,7 +606,7 @@ connection.onCompletion(async (params: CompletionParams) => {
     
     return [...(await prefixItems), ...(await termItems)];
   }
-  if (doc.languageId === "jsonld") {
+  if (isJsonLdLikeDocument(doc.uri, doc.languageId, doc.getText())) {
     const prefixItemsJ = jsonldProvider.provide(params, documents);
     const termItemsJ = jsonldTermProvider.provide(params, documents);
     return [...(await prefixItemsJ), ...(await termItemsJ)];
@@ -802,7 +809,13 @@ connection.onRequest("rdfusion/coverage", async () => {
 });
 
 
-registerHoverHandler(connection, documents, termMetadataService, performanceTracer);
+registerHoverHandler(
+  connection,
+  documents,
+  termMetadataService,
+  performanceTracer,
+  dataManager,
+);
 
 ttlDiff.register();
 

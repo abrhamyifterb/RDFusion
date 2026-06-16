@@ -61,9 +61,6 @@ function roleScore(role: TurtleCompletionRole, metadata?: TermMetadata): number 
 
 function shouldIncludeTermForRole(role: TurtleCompletionRole, metadata?: TermMetadata): boolean {
 	if (role === 'predicate') {
-		// YASQE/YASGUI treats class and property suggestions as separate completers;
-		// in Turtle predicate position, class-only terms are noise and should not be offered.
-		// Unknown terms are kept as a fallback for vocabularies without usable metadata.
 		return !isClassOnlyTerm(metadata);
 	}
 	return true;

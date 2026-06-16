@@ -156,8 +156,18 @@ export class WorkspaceIndexService {
     return this.indexWorkspaceFiles(files, options);
   }
 
-  async indexParsedRdf(uri: string, text: string, version: number): Promise<void> {
-    const parsedGraph = await this.dataManager.parseDocument(uri, text, version);
+  async indexParsedRdf(
+    uri: string,
+    text: string,
+    version: number,
+    languageId?: string,
+  ): Promise<void> {
+    const parsedGraph = await this.dataManager.parseDocument(
+      uri,
+      text,
+      version,
+      languageId,
+    );
     this.indexParsedGraph(uri, parsedGraph, version, true);
   }
 

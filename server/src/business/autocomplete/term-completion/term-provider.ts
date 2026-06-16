@@ -12,7 +12,7 @@ export class TermProvider implements ITermProvider {
 	private configSettings: RDFusionConfigSettings;
 	constructor(
 		dataManager: DataManager,
-		prefixRegistry: PrefixRegistry,
+		private readonly prefixRegistry: PrefixRegistry,
 		initialSettings: RDFusionConfigSettings
 	) {
 		this.local  = new LocalTermCache(dataManager, prefixRegistry);
@@ -36,8 +36,40 @@ export class TermProvider implements ITermProvider {
 		return this.local.getInfo(prefix, term);
 	}
 
+	private splitIriForLookup(iri: string): { prefix: string; term: string; namespaceIri: string } | undefined {
+		const prefix = this.prefixRegistry.getPrefix(iri);
+		const namespaceIri = prefix ? this.prefixRegistry.getIri(prefix) : undefined;
+		if (prefix && namespaceIri && iri.startsWith(namespaceIri)) {
+			const term = iri.slice(namespaceIri.length);
+			if (term) {
+				return { prefix, term, namespaceIri };
+			}
+		}
+
+		const hash = iri.lastIndexOf('#');
+		const slash = iri.lastIndexOf('/');
+		const sep = Math.max(hash, slash);
+		if (sep < 0 || sep === iri.length - 1) {
+			return undefined;
+		}
+
+		return {
+			prefix: '@iri',
+			term: iri.slice(sep + 1),
+			namespaceIri: iri.slice(0, sep + 1),
+		};
+	}
+
 	public getRemoteTermInfo(prefix: string, term: string, namespaceIri?: string, syntax?: 'turtle' | 'jsonld'): RemoteTermInfo | undefined {
 		return this.remoteAccessEnabled(syntax) ? this.remote.getInfo(prefix, term, namespaceIri) : undefined;
+	}
+
+	public getRemoteTermInfoByIri(iri: string, syntax?: 'turtle' | 'jsonld'): RemoteTermInfo | undefined {
+		if (!this.remoteAccessEnabled(syntax)) {
+			return undefined;
+		}
+		const parts = this.splitIriForLookup(iri);
+		return parts ? this.remote.getInfo(parts.prefix, parts.term, parts.namespaceIri) : undefined;
 	}
 
 	public getCachedRemoteTermsForPrefix(prefix: string, namespaceIri?: string, syntax?: 'turtle' | 'jsonld'): Set<string> | undefined {
@@ -57,6 +89,14 @@ export class TermProvider implements ITermProvider {
 
 	public async ensureRemoteTermInfo(prefix: string, term: string, namespaceIri?: string, syntax?: 'turtle' | 'jsonld'): Promise<RemoteTermInfo | undefined> {
 		return this.remoteAccessEnabled(syntax) ? await this.remote.ensureInfo(prefix, term, namespaceIri) : undefined;
+	}
+
+	public async ensureRemoteTermInfoByIri(iri: string, syntax?: 'turtle' | 'jsonld'): Promise<RemoteTermInfo | undefined> {
+		if (!this.remoteAccessEnabled(syntax)) {
+			return undefined;
+		}
+		const parts = this.splitIriForLookup(iri);
+		return parts ? await this.remote.ensureInfo(parts.prefix, parts.term, parts.namespaceIri) : undefined;
 	}
 
 	public async prefetchRemoteTermsForPrefix(prefix: string, connection: Connection, namespaceIri?: string, syntax?: 'turtle' | 'jsonld'): Promise<void> {

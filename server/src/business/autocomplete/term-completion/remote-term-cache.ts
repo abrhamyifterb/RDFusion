@@ -10,6 +10,7 @@ import {
 import { RemoteVocabularyParser } from './remote-vocabulary-parser';
 import { RemoteVocabularyFetcher } from './remote-vocabulary-fetcher';
 import { LovTermLookup } from './lov-term-lookup';
+import { RemoteVocabularyHtmlFallback } from './remote-vocabulary-html-fallback';
 
 const VOCAB_DEREFERENCE_TIMEOUT_MS = 8000;
 const TERM_DEREFERENCE_TIMEOUT_MS = 5000;
@@ -77,6 +78,7 @@ export class RemoteTermCache {
 	private readonly parser: RemoteVocabularyParser;
 	private readonly fetcher: RemoteVocabularyFetcher;
 	private readonly lovLookup: LovTermLookup;
+	private readonly htmlFallback: RemoteVocabularyHtmlFallback;
 
 	constructor(
 		private prefixRegistry: PrefixRegistry,
@@ -84,6 +86,7 @@ export class RemoteTermCache {
 		this.parser = new RemoteVocabularyParser(prefixRegistry);
 		this.fetcher = new RemoteVocabularyFetcher();
 		this.lovLookup = new LovTermLookup();
+		this.htmlFallback = new RemoteVocabularyHtmlFallback(prefixRegistry);
 	}
 
 	public async get(prefixQuery: string, connection: Connection, namespaceIri?: string, options: RemoteFetchOptions = {}): Promise<Set<string>> {
@@ -143,7 +146,15 @@ export class RemoteTermCache {
 		const exactPromise = this.ensureExactTerm(prefix, term, termIri, baseIri).catch(() => undefined);
 		const [snapshot, exact] = await Promise.all([vocabularyPromise, exactPromise]);
 		const fromVocabulary = snapshot.infoByTerm.get(term);
-		const mergedVocabulary = mergeVocabularyInfos(fromVocabulary?.vocabulary, exact?.vocabulary);
+		let mergedVocabulary = mergeVocabularyInfos(fromVocabulary?.vocabulary, exact?.vocabulary);
+		if (!mergedVocabulary) {
+			const htmlVocabulary = await this.htmlFallback.fetchTerm({
+				term,
+				termIri,
+				timeoutMs: TERM_DEREFERENCE_TIMEOUT_MS,
+			}).catch(() => undefined);
+			mergedVocabulary = mergeVocabularyInfos(htmlVocabulary);
+		}
 		if (!mergedVocabulary) {
 			this.exactTermLookupCache.set(this.exactTermKey(baseIri, term), REMOTE_TERM_MISS, { ttl: NEGATIVE_CACHE_TTL_MS });
 			return undefined;

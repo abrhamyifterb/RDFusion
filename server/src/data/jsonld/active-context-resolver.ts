@@ -150,14 +150,22 @@ function normalizeTermDef(term: string, raw: any, ac: ResolvedContext, base?: st
   let id: string | null | undefined;
   if (Object.prototype.hasOwnProperty.call(raw, "@id")) {
     id = raw["@id"] == null ? null : expandIri(String(raw["@id"]), ac, { vocab: true }, base);
+  } else if (!term.includes(":")) {
+    id = ac.vocab ? `${ac.vocab}${term}` : undefined;
   }
-  const container = arr<string>(raw["@container"])?.slice().sort();
+  const container = arr<string>(raw["@container"])
+    ?.filter((entry): entry is string => typeof entry === "string")
+    .slice()
+    .sort();
 
   let dtype: string | undefined;
   if (Object.prototype.hasOwnProperty.call(raw, "@type")) {
     const t = raw["@type"];
-    if (t === "@id" || t === "@vocab" || t === "@json" || t === "@none") dtype = t;
-    else dtype = expandIri(String(t), ac, { vocab: true }, base);
+    if (t === null) dtype = undefined;
+    else if (typeof t === "string") {
+      if (t === "@id" || t === "@vocab" || t === "@json" || t === "@none") dtype = t;
+      else dtype = expandIri(t, ac, { vocab: true }, base);
+    }
   }
 
   const lang = Object.prototype.hasOwnProperty.call(raw, "@language")
@@ -165,7 +173,7 @@ function normalizeTermDef(term: string, raw: any, ac: ResolvedContext, base?: st
     : undefined;
 
   const dir = Object.prototype.hasOwnProperty.call(raw, "@direction")
-    ? (raw["@direction"] == null ? null : (raw["@direction"] === "rtl" ? "rtl" : "ltr"))
+    ? (raw["@direction"] == null ? null : (raw["@direction"] === "rtl" || raw["@direction"] === "ltr" ? raw["@direction"] : undefined))
     : undefined;
 
   const explicitPrefix = raw["@prefix"] === true ? true : raw["@prefix"] === false ? false : undefined;

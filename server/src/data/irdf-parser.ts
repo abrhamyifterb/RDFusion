@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Node } from 'jsonc-parser';
 import { Diagnostic, Range } from 'vscode-languageserver/node.js';
+import type { ResolvedContext } from './jsonld/active-context-resolver.js';
 
 export interface CachedParsedGraph {
   version: number;
@@ -29,6 +30,8 @@ export interface JsonldParsedGraph {
   prefixMap?: Map<string,string>;
   /** Active context default vocabulary mapping, if any. */
   vocab?: string;
+  /** Full JSON-LD active context after resolving remote and inline contexts. */
+  resolvedContext?: ResolvedContext;
   definitions: Definition[];
   quads: any[];
   diagnostics: Diagnostic[];

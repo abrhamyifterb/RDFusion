@@ -21,7 +21,7 @@ export async function getParsedGraphForCommand(
     return snapshot?.parsedGraph;
   }
 
-  return dataManager.parseDocument(uri, doc.getText(), doc.version);
+  return dataManager.parseDocument(uri, doc.getText(), doc.version, doc.languageId);
 }
 
 export function hasParseDiagnostics(parsed: CommandParsedGraph): boolean {
