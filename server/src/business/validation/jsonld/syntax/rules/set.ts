@@ -3,6 +3,10 @@ import { walkAst, nodeText, nodeToRange } from '../utils.js';
 import { Node } from 'jsonc-parser';
 import { ValidationRule } from '../../../utils.js';
 
+function isJsonLdValueNode(node: Node | undefined): boolean {
+	return !!node && ['string', 'number', 'boolean', 'null', 'object', 'array'].includes(node.type);
+}
+
 export default class SetRule implements ValidationRule {
 	public readonly key = 'setCheck';
 	private text!: string;
@@ -23,10 +27,10 @@ export default class SetRule implements ValidationRule {
 				nodeText(this.text, node.children[0]) === '"@set"'
 			) {
 				const val = node.children[1];
-				if (val?.type !== 'array' && val?.type !== 'object') {
+				if (!isJsonLdValueNode(val)) {
 					diags.push(Diagnostic.create(
 						nodeToRange(this.text, val),
-						'`@set` value must be an array or object.',
+						'`@set` value must be a JSON-LD value, node object, value object, or an array of those values.',
 						DiagnosticSeverity.Warning,
 						this.key,
 							'RDFusion'

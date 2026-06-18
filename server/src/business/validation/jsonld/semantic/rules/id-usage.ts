@@ -2,6 +2,12 @@ import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { ValidationRule } from '../../../utils';
 import { Node } from 'jsonc-parser';
 import { walkAst, nodeText, nodeToRange } from '../../syntax/utils.js';
+import type { ResolvedContext } from '../../../../../data/jsonld/active-context-resolver.js';
+import {
+  activeJsonLdContextAt,
+  isJsonLdKeywordAt,
+  jsonStringValue,
+} from '../../jsonld-keyword-utils.js';
 
 export default class IdUsageCheck implements ValidationRule {
   public readonly key = 'idUsage';
@@ -9,11 +15,14 @@ export default class IdUsageCheck implements ValidationRule {
   private text!: string;
   private contextSpan: { start: number; end: number } | null = null;
   private skipSpans: { start: number; end: number }[] = [];
-  private idAliases = new Set<string>();
+  private resolvedContext?: ResolvedContext;
 
-  init(ctx: { ast: Node; text: string }) {
+  init(ctx: { ast: Node; text: string; resolvedContext?: ResolvedContext }) {
     this.ast = ctx.ast;
     this.text = ctx.text;
+    this.resolvedContext = ctx.resolvedContext;
+    this.contextSpan = null;
+    this.skipSpans = [];
 
     walkAst(this.ast, node => {
       if (
@@ -39,7 +48,6 @@ export default class IdUsageCheck implements ValidationRule {
 
   run(): Diagnostic[] {
     const diags: Diagnostic[] = [];
-    const idTerms = this.collectIdTerms();
 
     walkAst(this.ast, node => {
       if (
@@ -51,18 +59,17 @@ export default class IdUsageCheck implements ValidationRule {
       }
 
       const [keyNode, valNode] = node.children!;
-      const term = nodeText(this.text, keyNode).slice(1, -1);
-      if (!idTerms.has(term)) {return;}
+      const term = jsonStringValue(this.text, keyNode);
+      if (!term || !this.isIdCoercedProperty(term, keyNode)) return;
 
-      if (!IdUsageCheck.isValidIriNode(valNode, this.text, this.idAliases)) {
+      if (!this.isValidIriNode(valNode)) {
         diags.push(
           Diagnostic.create(
             nodeToRange(this.text, valNode),
-            // eslint-disable-next-line no-useless-escape
-            `Property "${term}" is coerced with @type:@id; its value must be an IRI string, an object {"@id": "<IRI>"}, or an array of those.`,
-            DiagnosticSeverity.Error,
+            `Property "${term}" is defined with @type: @id; this value will expand as a JSON literal instead of an IRI node reference. Use an IRI string or an object with @id.`,
+            DiagnosticSeverity.Warning,
             this.key,
-							'RDFusion'
+            'RDFusion'
           )
         );
       }
@@ -71,65 +78,48 @@ export default class IdUsageCheck implements ValidationRule {
     return diags;
   }
 
-  private collectIdTerms(): Set<string> {
-    const idTerms = new Set<string>();
-    if (!this.contextSpan) {return idTerms;}
-
-    walkAst(this.ast, node => {
-      if (
-        node?.type === 'property' &&
-        node?.offset >= this.contextSpan!.start &&
-        node?.offset < this.contextSpan!.end
-      ) {
-        const [keyNode, valNode] = node.children!;
-        const term = nodeText(this.text, keyNode).slice(1, -1);
-        if (valNode?.type === 'object') {
-          for (const inner of valNode.children ?? []) {
-            const innerKey = nodeText(this.text, inner.children![0]);
-            const typeNode = inner.children![1];
-            if (
-              innerKey === '"@type"' &&
-              ((typeNode?.type === 'string' && JSON.parse(nodeText(this.text, typeNode)) === '@id') ||
-                (typeNode?.type === 'array' && typeNode.children!.some(
-                  child => child?.type === 'string' && JSON.parse(nodeText(this.text, child)) === '@id'
-                )))
-            ) {
-              idTerms.add(term);
-            }
-          }
-        }
-        if (valNode?.type === 'string' && JSON.parse(nodeText(this.text, valNode)) === '@id') {
-          this.idAliases.add(term);
-        }
-      }
-    });
-
-    return idTerms;
+  private isIdCoercedProperty(term: string, keyNode: Node): boolean {
+    const active = activeJsonLdContextAt(
+      this.ast,
+      this.text,
+      keyNode.offset,
+      this.resolvedContext,
+    );
+    return active.terms.get(term)?.['@type'] === '@id';
   }
 
   private inSkipSpan(offset: number): boolean {
     return this.skipSpans.some(s => offset >= s.start && offset < s.end);
   }
 
-  private static isValidIriNode(node: Node, text: string, idAliases: Set<string>): boolean {
+  private isJsonLdIdKeyword(key: string | undefined, node: Node | undefined): boolean {
+    return isJsonLdKeywordAt(
+      this.ast,
+      this.text,
+      key,
+      node?.offset ?? 0,
+      '@id',
+      this.resolvedContext,
+    );
+  }
+
+  private isValidIriNode(node: Node | undefined): boolean {
     switch (node?.type) {
       case 'string':
         return true;
 
+      case 'object': {
+        const props = node.children ?? [];
+        if (props.length !== 1) return false;
 
-    case 'object': {
-      const props = node.children ?? [];
-      if (props.length !== 1) return false;
-
-      const keyText = nodeText(text, props[0].children![0]); 
-      const keyTerm = keyText.slice(1, -1);
-      const isIdKey = keyText === '"@id"' || idAliases.has(keyTerm);
-
-      return isIdKey && props[0].children![1]?.type === 'string';
-    }
+        const keyNode = props[0].children?.[0];
+        const valueNode = props[0].children?.[1];
+        const key = jsonStringValue(this.text, keyNode);
+        return this.isJsonLdIdKeyword(key, keyNode) && valueNode?.type === 'string';
+      }
 
       case 'array':
-        return node.children!.every(child => IdUsageCheck.isValidIriNode(child, text, idAliases));
+        return (node.children ?? []).every(child => this.isValidIriNode(child));
 
       default:
         return false;

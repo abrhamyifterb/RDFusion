@@ -138,21 +138,21 @@ describe("registerHoverHandler", () => {
 
   it("resolves ordinary JSON-LD context term hover to the mapped remote IRI", async () => {
     const calls: any[] = [];
-    const text =
-      '{"@context":{"label":"http://www.w3.org/2004/02/skos/core#prefLabel"},"label":"x"}';
+    const iri = "http://www.w3.org/2004/02/skos/core#prefLabel";
+    const text = `{"@context":{"label":"${iri}"},"label":"x"}`;
     const doc = TextDocument.create("file:///doc.jsonld", "jsonld", 1, text);
     const termMetadata = {
-      getMetadata: (prefix: string, term: string, options: any) => {
-        calls.push({ prefix, term, options });
+      getMetadataForIri: (value: string, options: any) => {
+        calls.push({ value, options });
         return {
           documentation: "**prefLabel**\n\nMapped label",
           detail: "prefLabel",
           sources: ["remote"],
         };
       },
-      getMetadataAsync: async (prefix: string, term: string, options: any) => ({
-        documentation: `**${term}**`,
-        detail: term,
+      getMetadataForIriAsync: async (value: string, options: any) => ({
+        documentation: `**${value}**`,
+        detail: value,
         sources: ["remote"],
         options,
       }),
@@ -167,9 +167,9 @@ describe("registerHoverHandler", () => {
 
     expect(hover.contents.value).toContain("prefLabel");
     expect(calls[0]).toMatchObject({
-      prefix: "@vocab",
-      term: "prefLabel",
+      value: iri,
       options: {
+        displayName: "label",
         namespaceIri: "http://www.w3.org/2004/02/skos/core#",
         syntax: "jsonld",
       },
@@ -178,21 +178,22 @@ describe("registerHoverHandler", () => {
 
   it('resolves context term hover through @vocab-relative @id values', async () => {
     const calls: any[] = [];
+    const iri = "http://www.w3.org/2004/02/skos/core#prefLabel";
     const text =
       '{"@context":{"@vocab":"http://www.w3.org/2004/02/skos/core#","label":{"@id":"prefLabel"}},"label":"x"}';
     const doc = TextDocument.create("file:///doc.jsonld", "jsonld", 1, text);
     const termMetadata = {
-      getMetadata: (prefix: string, term: string, options: any) => {
-        calls.push({ prefix, term, options });
+      getMetadataForIri: (value: string, options: any) => {
+        calls.push({ value, options });
         return {
           documentation: "**prefLabel**\n\nMapped label through @vocab",
           detail: "prefLabel",
           sources: ["remote"],
         };
       },
-      getMetadataAsync: async (prefix: string, term: string, options: any) => ({
-        documentation: `**${term}**`,
-        detail: term,
+      getMetadataForIriAsync: async (value: string, options: any) => ({
+        documentation: `**${value}**`,
+        detail: value,
         sources: ["remote"],
         options,
       }),
@@ -207,9 +208,9 @@ describe("registerHoverHandler", () => {
 
     expect(hover.contents.value).toContain("prefLabel");
     expect(calls[0]).toMatchObject({
-      prefix: "@vocab",
-      term: "prefLabel",
+      value: iri,
       options: {
+        displayName: "label",
         namespaceIri: "http://www.w3.org/2004/02/skos/core#",
         syntax: "jsonld",
       },

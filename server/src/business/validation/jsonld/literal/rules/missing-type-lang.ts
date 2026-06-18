@@ -45,7 +45,7 @@ export default class MissingTypeOrLang implements ValidationRule {
 
 					diags.push(Diagnostic.create(
 						nodeToRange(this.text, valProp.children[0]),
-						'Value object must include either @type or @language alongside @value.',
+						'Value object has @value without @type or @language; JSON-LD will expand it as a plain literal. Add @type or @language only if a typed or language-tagged literal was intended.',
 						DiagnosticSeverity.Warning,
 						this.key,
 							'RDFusion'

@@ -19,7 +19,7 @@ export default class MissingType implements ValidationRule {
 			.filter(d => !d?.typeIri)
 			.map(d => Diagnostic.create(
 				d.range,
-				`Missing @type for node <${d.id}>.`,
+				`Node <${d.id}> has no @type; this is valid JSON-LD, but may be incomplete for the selected RDFusion validation profile.`,
 				DiagnosticSeverity.Warning,
 				this.key,
 							'RDFusion'

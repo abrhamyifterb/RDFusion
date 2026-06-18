@@ -1,5 +1,11 @@
 import type { Node } from 'jsonc-parser';
-import { findJsonLdKeywordAliases } from '../../../utils/shared/jsonld/context-prefix.js';
+import {
+  findJsonLdKeywordAliases,
+  findJsonLdLocalContextAt,
+  jsonLdStateFromResolvedContext,
+  type JsonLdLocalContextState,
+} from '../../../utils/shared/jsonld/context-prefix.js';
+import type { ResolvedContext } from '../../../data/jsonld/active-context-resolver.js';
 import { nodeText, walkAst } from './syntax/utils.js';
 
 export interface JsonLdSpan {
@@ -18,6 +24,38 @@ export function jsonStringValue(text: string, node: Node | undefined): string | 
 
 export function propertyKeyName(text: string, node: Node | undefined): string | undefined {
   return jsonStringValue(text, node?.children?.[0]);
+}
+
+
+export function activeJsonLdContextAt(
+  ast: Node | undefined,
+  text: string,
+  offset: number,
+  resolvedContext?: ResolvedContext,
+): JsonLdLocalContextState {
+  return findJsonLdLocalContextAt(
+    ast,
+    text,
+    offset,
+    jsonLdStateFromResolvedContext(resolvedContext),
+  );
+}
+
+export function isJsonLdKeywordAt(
+  ast: Node | undefined,
+  text: string,
+  key: string | undefined,
+  offset: number,
+  keyword: string,
+  resolvedContext?: ResolvedContext,
+): boolean {
+  if (!key) return false;
+  if (key === keyword) return true;
+  const active = activeJsonLdContextAt(ast, text, offset, resolvedContext);
+  return (
+    active.keywordAliases.get(keyword)?.has(key) ??
+    active.contextMap.get(key) === keyword
+  );
 }
 
 export function keywordNames(ast: Node, text: string, keyword: string): Set<string> {
@@ -71,8 +109,27 @@ export function stringArrayValues(text: string, node: Node | undefined): string[
   return undefined;
 }
 
-export function hasJsonTypeMapping(parent: Node | undefined, text: string, typeNames: Set<string>): boolean {
-  const typeNode = findSiblingPropertyValue(parent, text, typeNames);
-  const values = stringArrayValues(text, typeNode);
-  return !!values?.some(value => value === '@json' || value.endsWith('#JSON'));
+export function hasJsonTypeMapping(
+  parent: Node | undefined,
+  text: string,
+  typeNames: Set<string>,
+  ast?: Node,
+  resolvedContext?: ResolvedContext,
+): boolean {
+  if (parent?.type !== 'object') return false;
+
+  for (const prop of parent.children ?? []) {
+    if (prop?.type !== 'property' || !Array.isArray(prop.children) || prop.children.length < 2) continue;
+    const key = propertyKeyName(text, prop);
+    const keyNode = prop.children[0];
+    const isType =
+      (key !== undefined && typeNames.has(key)) ||
+      (ast !== undefined && isJsonLdKeywordAt(ast, text, key, keyNode?.offset ?? 0, '@type', resolvedContext));
+    if (!isType) continue;
+
+    const values = stringArrayValues(text, prop.children[1]);
+    if (values?.some(value => value === '@json' || value.endsWith('#JSON'))) return true;
+  }
+
+  return false;
 }

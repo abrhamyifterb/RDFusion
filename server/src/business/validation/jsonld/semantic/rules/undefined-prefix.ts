@@ -56,12 +56,19 @@ export default class UndefinedPrefix implements ValidationRule {
 
 				if (key.includes(':') && !keywords.has(key)) {
 					const prefix = key.split(':',1)[0];
-					const scopedContext = findJsonLdLocalContextAt(
+					const localContext = findJsonLdLocalContextAt(
 						this.ast,
 						this.text,
 						node.children[0].offset,
-						{ prefixMap: this.prefixMap },
 					);
+					const scopedContext = localContext.hasContext
+						? localContext
+						: findJsonLdLocalContextAt(
+							this.ast,
+							this.text,
+							node.children[0].offset,
+							{ prefixMap: this.prefixMap },
+						);
 					if (!scopedContext.prefixMap.has(prefix)) {
 						diags.push(Diagnostic.create(
 							nodeToRange(this.text,node.children[0]),

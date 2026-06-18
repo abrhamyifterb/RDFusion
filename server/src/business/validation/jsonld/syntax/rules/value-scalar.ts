@@ -3,6 +3,7 @@ import { walkAst, nodeText, nodeToRange } from '../utils.js';
 import { Node } from 'jsonc-parser';
 import { ValidationRule } from '../../../utils.js';
 import { hasJsonTypeMapping, keywordNames } from '../../jsonld-keyword-utils.js';
+import type { ResolvedContext } from '../../../../../data/jsonld/active-context-resolver.js';
 
 const SCALARS = new Set<Node['type']>(['string','number','boolean','null']);
 
@@ -11,11 +12,13 @@ export default class ValueScalar implements ValidationRule {
   private text!: string;
   private ast!: Node;
   private typeNames = new Set<string>(['@type']);
+  private resolvedContext?: ResolvedContext;
 
-  public init(ctx: { text: string; ast: Node }) {
+  public init(ctx: { text: string; ast: Node; resolvedContext?: ResolvedContext }) {
     this.text = ctx.text;
     this.ast  = ctx.ast;
     this.typeNames = keywordNames(this.ast, this.text, '@type');
+    this.resolvedContext = ctx.resolvedContext;
   }
 
   public run(): Diagnostic[] {
@@ -28,7 +31,7 @@ export default class ValueScalar implements ValidationRule {
         nodeText(this.text, node.children[0]) === '"@value"'
       ) {
         const val = node.children[1];
-        if (!SCALARS.has(val?.type) && !hasJsonTypeMapping(node.parent, this.text, this.typeNames)) {
+        if (!SCALARS.has(val?.type) && !hasJsonTypeMapping(node.parent, this.text, this.typeNames, this.ast, this.resolvedContext)) {
           diags.push(Diagnostic.create(
             nodeToRange(this.text, val),
             '`@value` must be a scalar unless the value object is typed as `@json`.',

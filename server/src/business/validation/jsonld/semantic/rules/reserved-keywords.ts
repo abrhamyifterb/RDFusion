@@ -27,11 +27,35 @@ export default class ReservedKeywordRedefinition implements ValidationRule {
       const v = JSON.parse(nodeText(this.text, n));
       return v === 'ltr' || v === 'rtl';
     },
-    '@version':   n => n?.type === 'number',
+    '@version':   n => n?.type === 'number' && Number(nodeText(this.text, n)) === 1.1,
     '@propagate': n => n?.type === 'boolean',
     '@protected': n => n?.type === 'boolean',
-    '@import':    n => n?.type === 'string'
+    '@import':    n => n?.type === 'string',
+    '@type':      n => this.isValidContextTypeDefinition(n)
   };
+
+
+  private isValidContextTypeDefinition(node: Node): boolean {
+    if (node?.type !== 'object') return false;
+    let hasSetContainer = false;
+    for (const prop of node.children ?? []) {
+      if (!Array.isArray(prop.children) || prop.children.length < 2) return false;
+      const key = nodeText(this.text, prop.children[0]).slice(1, -1);
+      const value = prop.children[1];
+      if (key === '@container') {
+        if (value?.type !== 'string') return false;
+        hasSetContainer = JSON.parse(nodeText(this.text, value)) === '@set';
+        if (!hasSetContainer) return false;
+        continue;
+      }
+      if (key === '@protected') {
+        if (value?.type !== 'boolean') return false;
+        continue;
+      }
+      return false;
+    }
+    return hasSetContainer;
+  }
 
   init(ctx: { ast: Node; text: string }) {
     this.ast = ctx.ast;

@@ -43,7 +43,7 @@ describe('LocalTermCache incremental updates', () => {
     expect(knowsInfo?.vocabulary?.roles).toContain('property');
     expect(knowsInfo?.vocabulary?.domains).toContain('ex:Person');
     expect(knowsInfo?.vocabulary?.ranges).toContain('ex:Person');
-    expect(knowsInfo?.vocabulary?.examples).toContain('ex:Alice');
+    expect(knowsInfo?.vocabulary?.examples ?? []).toEqual([]);
     const personInfo = cache.getInfo('ex', 'Person');
     expect(personInfo?.vocabulary?.labels).toContain('Person');
     expect(personInfo?.vocabulary?.comments).toContain('A person resource.');

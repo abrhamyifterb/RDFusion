@@ -1,5 +1,6 @@
 import {
 	Diagnostic,
+	DiagnosticSeverity,
 	TextDocuments
 } from "vscode-languageserver/node.js";
 import { DataManager } from '../../../data/data-manager';
@@ -33,13 +34,26 @@ export class JsonLdValidator implements IRdfValidator {
 	async validate(uri: string, shaclValidator: ShaclValidator, shaclSelection: ShaclSelectionSettings): Promise<Diagnostic[]> {
 		const diags: Diagnostic[] = [];
 
-		const parsed = this.dataManager.getGraphSnapshot(uri);
+		const document = this.documents.get(uri);
+		const snapshot = document
+			? await this.dataManager.ensureCurrentSnapshot(
+				uri,
+				document.getText(),
+				document.version,
+				document.languageId,
+			)
+			: this.dataManager.getSnapshot(uri);
+		const parsed = snapshot?.parsedGraph ?? this.dataManager.getGraphSnapshot(uri);
 		
 		if ((parsed as JsonldParsedGraph) && (parsed as JsonldParsedGraph).diagnostics?.length) {
 			diags.push(...(parsed as JsonldParsedGraph).diagnostics);
 		}
 
-		if (!parsed || diags.length > 0) {
+		if (!parsed) {
+			return diags;
+		}
+
+		if (diags.some(diag => diag.severity === DiagnosticSeverity.Error)) {
 			return diags;
 		}
 

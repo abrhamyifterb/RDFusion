@@ -17,6 +17,168 @@ function quadSubjectValue(q: any): string | undefined {
 	return q?.subject?.value ?? q?._subject?.value;
 }
 
+function quadPredicateValue(q: any): string | undefined {
+	return q?.predicate?.value ?? q?._predicate?.value;
+}
+
+function termValue(term: any): string | undefined {
+	if (!term) return undefined;
+	if (Array.isArray(term)) {
+		for (const item of term) {
+			const value = termValue(item);
+			if (value) return value;
+		}
+		return undefined;
+	}
+	if (typeof term === 'string') {
+		const value = term.trim();
+		return value || undefined;
+	}
+	const directValue = term?.value;
+	if (typeof directValue === 'string') {
+		const value = directValue.trim();
+		if (value) return value;
+	}
+	return termValue(term?.term ?? term?.node ?? term?.id ?? term?.object);
+}
+
+function resultTermValue(result: any, keys: string[]): string | undefined {
+	for (const key of keys) {
+		const value = termValue(result?.[key]);
+		if (value) return value;
+	}
+	return undefined;
+}
+
+function tokenToRange(token: any): Range | undefined {
+	if (token?.startLine === undefined) return undefined;
+	return Range.create(
+		Position.create(token.startLine - 1, token.startColumn - 1),
+		Position.create(token.endLine - 1, token.endColumn),
+	);
+}
+
+function jsonLdSourceMapRange(
+	dataGraph: ParsedGraph | JsonldParsedGraph,
+	focus: string | undefined,
+	path: string | undefined,
+): Range | undefined {
+	if (!focus) return undefined;
+	const sourceMap = (dataGraph as JsonldParsedGraph).sourceMap;
+	if (!sourceMap) return undefined;
+	if (path) {
+		const predicateRange = sourceMap.predicateRanges?.get(focus)?.get(path);
+		if (predicateRange) return predicateRange;
+	}
+	return sourceMap.subjectRanges?.get(focus);
+}
+
+function firstJsonLdSourceMapRange(dataGraph: ParsedGraph | JsonldParsedGraph): Range | undefined {
+	const sourceMap = (dataGraph as JsonldParsedGraph).sourceMap;
+	for (const range of sourceMap?.subjectRanges?.values?.() ?? []) {
+		return range;
+	}
+	for (const ranges of sourceMap?.predicateRanges?.values?.() ?? []) {
+		for (const range of ranges.values()) {
+			return range;
+		}
+	}
+	return undefined;
+}
+
+function firstQuadRange(dataGraph: ParsedGraph | JsonldParsedGraph): Range | undefined {
+	for (const quad of dataGraph.quads ?? []) {
+		const range = tokenToRange((quad as any).positionToken)
+			?? tokenToRange((quad as any).predicatePositionToken);
+		if (range) return range;
+	}
+	return undefined;
+}
+
+function rangeFromOffsets(text: string, start: number, end: number): Range {
+	let line = 0;
+	let character = 0;
+	let startPosition: Position | undefined;
+	let endPosition: Position | undefined;
+	for (let index = 0; index <= text.length; index += 1) {
+		if (index === start) {
+			startPosition = Position.create(line, character);
+		}
+		if (index === end) {
+			endPosition = Position.create(line, character);
+			break;
+		}
+		const char = text[index];
+		if (char === '\n') {
+			line += 1;
+			character = 0;
+		} else {
+			character += 1;
+		}
+	}
+	return Range.create(
+		startPosition ?? Position.create(0, 0),
+		endPosition ?? startPosition ?? Position.create(0, 1),
+	);
+}
+
+function quotedJsonStringRange(text: string, quotedStart: number, quotedText: string): Range {
+	return rangeFromOffsets(text, quotedStart + 1, quotedStart + quotedText.length - 1);
+}
+
+function jsonStringLiteralPattern(value: string): RegExp {
+	const escaped = JSON.stringify(value)
+		.slice(1, -1)
+		.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	return new RegExp(`"${escaped}"`, 'u');
+}
+
+function exactJsonLdStringValueRange(
+	dataGraph: ParsedGraph | JsonldParsedGraph,
+	value: string | undefined,
+): Range | undefined {
+	if (!value || typeof (dataGraph as JsonldParsedGraph).text !== 'string') {
+		return undefined;
+	}
+	const text = (dataGraph as JsonldParsedGraph).text;
+	const quoted = JSON.stringify(value);
+	const quotedIndex = text.indexOf(quoted);
+	if (quotedIndex >= 0) {
+		return quotedJsonStringRange(text, quotedIndex, quoted);
+	}
+
+	const literalMatch = jsonStringLiteralPattern(value).exec(text);
+	if (literalMatch?.index !== undefined) {
+		return quotedJsonStringRange(text, literalMatch.index, literalMatch[0]);
+	}
+
+	const rawIndex = text.indexOf(value);
+	if (rawIndex >= 0) {
+		return rangeFromOffsets(text, rawIndex, rawIndex + value.length);
+	}
+	return undefined;
+}
+
+function firstJsonLdIdValueRange(dataGraph: ParsedGraph | JsonldParsedGraph): Range | undefined {
+	if (typeof (dataGraph as JsonldParsedGraph).text !== 'string') {
+		return undefined;
+	}
+	const text = (dataGraph as JsonldParsedGraph).text;
+	const match = /"@id"\s*:\s*("(?:\\.|[^"\\])*")/u.exec(text);
+	if (!match || !match[1]) {
+		return undefined;
+	}
+	const quotedIndex = text.indexOf(match[1], match.index);
+	return quotedIndex >= 0 ? quotedJsonStringRange(text, quotedIndex, match[1]) : undefined;
+}
+
+function fallbackDiagnosticRange(dataGraph: ParsedGraph | JsonldParsedGraph): Range {
+	return firstJsonLdIdValueRange(dataGraph)
+		?? firstJsonLdSourceMapRange(dataGraph)
+		?? firstQuadRange(dataGraph)
+		?? Range.create(Position.create(0, 0), Position.create(0, 1));
+}
+
 function isRdfJsTerm(term: any): boolean {
 	return !!term && typeof term === 'object' && typeof term.termType === 'string' && 'value' in term;
 }
@@ -63,16 +225,30 @@ export class ShaclValidator {
 			const validator = new Validator(shapesDataset, { factory: rdfDataModel });
 			const report = await validator.validate({ dataset: dataDataset });
 			for (const result of report.results ?? []) {
-				const focus = result.focusNode?.value?.trim();
+				const focus = resultTermValue(result, ['focusNode', 'focus', 'sh:focusNode']);
+				const path = resultTermValue(result, ['path', 'resultPath', 'sh:resultPath']);
 				const firstMessage: any = result.message?.[0];
-				const matchingQuad = (dataGraph.quads ?? []).find((q: any) => quadSubjectValue(q) === focus);
+				const quads = dataGraph.quads ?? [];
+				const propertyQuad = path
+					? quads.find((q: any) =>
+						quadSubjectValue(q) === focus
+						&& quadPredicateValue(q) === path
+						&& (q as any).predicatePositionToken,
+					)
+					: undefined;
+				const matchingQuad = propertyQuad
+					?? quads.find((q: any) => quadSubjectValue(q) === focus);
+				const pathRange = path ? jsonLdSourceMapRange(dataGraph, focus, path) : undefined;
+				const subjectRange = jsonLdSourceMapRange(dataGraph, focus, undefined);
+				const range = tokenToRange((propertyQuad as any)?.predicatePositionToken)
+					?? pathRange
+					?? exactJsonLdStringValueRange(dataGraph, focus)
+					?? tokenToRange((matchingQuad as any)?.positionToken)
+					?? subjectRange
+					?? fallbackDiagnosticRange(dataGraph);
+
 				diagnostics.push({
-					range: (matchingQuad?.positionToken?.startLine !== undefined) ?
-						Range.create(
-							Position.create(matchingQuad.positionToken.startLine - 1, matchingQuad.positionToken.startColumn - 1),
-							Position.create(matchingQuad.positionToken.endLine - 1, matchingQuad.positionToken.endColumn)
-						) :
-						Range.create(Position.create(0, 0), Position.create(0, 1)),
+					range,
 					message: (typeof firstMessage === 'string' ? firstMessage : firstMessage?.value) ?? "SHACL shape violation",
 					severity: DiagnosticSeverity.Warning,
 					source: "SHACL Validation"
@@ -80,7 +256,7 @@ export class ShaclValidator {
 			}
 		} catch {
 			diagnostics.push({
-				range: Range.create(Position.create(0, 0), Position.create(0, 1)),
+				range: fallbackDiagnosticRange(dataGraph),
 				message: `SHACL validation could not be completed. Check that the selected SHACL shape files are valid and match the RDF file being validated.`,
 				severity: DiagnosticSeverity.Error,
 				source: "SHACL Validation"

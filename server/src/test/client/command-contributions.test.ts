@@ -46,13 +46,17 @@ describe('VS Code command contributions', () => {
       'rdfusion.sortBySubjectDesc',
       'rdfusion.sortByPredicateAsc',
       'rdfusion.sortByPredicateDesc',
-      'rdfusion.compareWithHEAD',
       'rdfusion.compareWithRef',
       'rdfusion.encodeTurtleUnicodeEscapes',
       'rdfusion.decodeTurtleUnicodeEscapes',
     ]) {
       expect(command(id).enablement).toBe('editorLangId == turtle');
     }
+  });
+
+
+  it('keeps SCM row command clickable outside the active editor language context', () => {
+    expect(command('rdfusion.compareWithHEAD').enablement).toBeUndefined();
   });
 
   it('keeps JSON-LD-only commands limited to JSON-LD documents', () => {

@@ -39,10 +39,10 @@ export default class GraphArrayCheck implements ValidationRule {
 				val.offset < this.contextSpan.end
 			) {return;}
 
-			if (val?.type !== 'array') {
+			if (val?.type !== 'array' && val?.type !== 'object') {
 			diags.push(Diagnostic.create(
 				nodeToRange(this.text, val),
-				'`@graph` value must be an array of node objects.',
+				'`@graph` value must be a node object or an array of node objects.',
 				DiagnosticSeverity.Error,
 				this.key,
 							'RDFusion'

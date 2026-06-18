@@ -93,7 +93,14 @@ export class JsonLdParser {
 		setResolvedContext(ast, undefined);
     }
 
-    const idRanges = new IdRangeBuilder(effectivePrefixMap).extract(ast, text);
+    const rangeBuilder = new IdRangeBuilder(
+		effectiveContextMap,
+		effectivePrefixMap,
+		effectiveResolvedContext?.base,
+		effectiveVocab,
+	);
+    const idRanges = rangeBuilder.extract(ast, text);
+    const predicateRanges = rangeBuilder.extractPredicateRanges(ast, text);
 
     const documentLoader = getSharedDocumentLoader();
 
@@ -130,8 +137,22 @@ export class JsonLdParser {
 		);
     }
 
-    new QuadPositionAttacher(idRanges).attach(quads);
+    new QuadPositionAttacher(idRanges, predicateRanges).attach(quads);
 
-    return { text, ast, contextMap: effectiveContextMap, prefixMap: effectivePrefixMap, vocab: effectiveVocab, resolvedContext: effectiveResolvedContext, definitions, quads, diagnostics };
+    return {
+		text,
+		ast,
+		contextMap: effectiveContextMap,
+		prefixMap: effectivePrefixMap,
+		vocab: effectiveVocab,
+		resolvedContext: effectiveResolvedContext,
+		sourceMap: {
+			subjectRanges: idRanges,
+			predicateRanges,
+		},
+		definitions,
+		quads,
+		diagnostics,
+	};
 	}
 }

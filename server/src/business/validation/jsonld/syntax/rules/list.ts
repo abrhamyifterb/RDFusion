@@ -4,6 +4,10 @@ import { walkAst, nodeText, nodeToRange } from '../utils.js';
 import { Node } from 'jsonc-parser';
 import { ValidationRule } from '../../../utils.js';
 
+function isJsonLdValueNode(node: Node | undefined): boolean {
+	return !!node && ['string', 'number', 'boolean', 'null', 'object', 'array'].includes(node.type);
+}
+
 export default class ListRule implements ValidationRule {
 	public readonly key = 'listCheck';
 	private text!: string;
@@ -25,10 +29,10 @@ export default class ListRule implements ValidationRule {
 				nodeText(this.text, node.children[0]) === '"@list"'
 			) {
 				const valueNode = node.children[1];
-				if (valueNode?.type !== 'array') {
+				if (!isJsonLdValueNode(valueNode)) {
 					diags.push(Diagnostic.create(
 						nodeToRange(this.text, valueNode),
-						'`@list` value must be an array.',
+						'`@list` value must be a JSON-LD value, node object, value object, or an array of those values.',
 						DiagnosticSeverity.Warning,
 						this.key,
 							'RDFusion'

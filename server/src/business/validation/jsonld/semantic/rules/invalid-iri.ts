@@ -5,10 +5,12 @@ import { Node }                          from 'jsonc-parser';
 import { walkAst, nodeToRange } from '../../syntax/utils.js';
 import { ValidationRule }                from '../../../utils.js';
 import { getIanaSchemes }                from '../../../iana-schemes.js';
+import type { ResolvedContext } from '../../../../../data/jsonld/active-context-resolver.js';
 import {
   collectContextValueSpans,
   jsonStringValue,
-  keywordNames,
+  activeJsonLdContextAt,
+  isJsonLdKeywordAt,
   offsetInSpans,
   propertyKeyName,
 } from '../../jsonld-keyword-utils.js';
@@ -23,14 +25,14 @@ export default class InvalidIri implements ValidationRule {
   private prefixMap!: Map<string,string>;
   private iana = new Set<string>();
   private contextSpans: { start: number; end: number }[] = [];
-  private typeNames = new Set<string>(['@type']);
+  private resolvedContext?: ResolvedContext;
 
-  public async init(ctx: { text: string; ast: Node; prefixMap?: Map<string,string> }) {
+  public async init(ctx: { text: string; ast: Node; prefixMap?: Map<string,string>; resolvedContext?: ResolvedContext }) {
     this.text       = ctx.text;
     this.ast        = ctx.ast;
     this.prefixMap = ctx.prefixMap ?? new Map<string,string>();
     this.contextSpans = collectContextValueSpans(this.ast, this.text);
-    this.typeNames = keywordNames(this.ast, this.text, '@type');
+    this.resolvedContext = ctx.resolvedContext;
     try {
       this.iana = await getIanaSchemes();
     } catch {
@@ -41,7 +43,7 @@ export default class InvalidIri implements ValidationRule {
   public run(): Diagnostic[] {
     const diags: Diagnostic[] = [];
   
-    const checkIri = (iri: string, range: any, severity: DiagnosticSeverity) => {
+    const checkIri = (iri: string, range: any, severity: DiagnosticSeverity, offset: number) => {
       if (iri.startsWith('_:') || TYPE_KEYWORDS.has(iri)) return;
     
       const parsed = URI.parse(iri);
@@ -70,7 +72,13 @@ export default class InvalidIri implements ValidationRule {
     
       if (iri.includes(':')) {
         const [prefix] = iri.split(':', 1);
-        if (!this.prefixMap.has(prefix)) {
+        const active = activeJsonLdContextAt(
+          this.ast,
+          this.text,
+          offset,
+          this.resolvedContext,
+        );
+        if (!active.prefixMap.has(prefix) && !this.prefixMap.has(prefix)) {
           diags.push(Diagnostic.create(
             range,
             `Undefined prefix "${prefix}" in IRI "${iri}".`,
@@ -93,17 +101,33 @@ export default class InvalidIri implements ValidationRule {
         const key = propertyKeyName(this.text, node);
         const val = node.children[1];
     
-        if (key === '@id' || (key && this.typeNames.has(key))) {
-          const severity = key === '@id' ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning;
+        const isIdKey = isJsonLdKeywordAt(
+          this.ast,
+          this.text,
+          key,
+          node.children[0].offset,
+          '@id',
+          this.resolvedContext,
+        );
+        const isTypeKey = isJsonLdKeywordAt(
+          this.ast,
+          this.text,
+          key,
+          node.children[0].offset,
+          '@type',
+          this.resolvedContext,
+        );
+        if (isIdKey || isTypeKey) {
+          const severity = isIdKey ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning;
           if (val?.type === 'string') {
             const iri = jsonStringValue(this.text, val);
-            if (iri !== undefined) checkIri(iri, nodeToRange(this.text, val), severity);
+            if (iri !== undefined) checkIri(iri, nodeToRange(this.text, val), severity, node.children[0].offset);
           }
           else if (val?.type === 'array') {
             for (const elt of val.children || []) {
               if (elt?.type === 'string') {
                 const iri = jsonStringValue(this.text, elt);
-                if (iri !== undefined) checkIri(iri, nodeToRange(this.text, elt), severity);
+                if (iri !== undefined) checkIri(iri, nodeToRange(this.text, elt), severity, node.children[0].offset);
               }
             }
           }

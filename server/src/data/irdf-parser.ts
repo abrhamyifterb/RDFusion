@@ -32,6 +32,11 @@ export interface JsonldParsedGraph {
   vocab?: string;
   /** Full JSON-LD active context after resolving remote and inline contexts. */
   resolvedContext?: ResolvedContext;
+  /** Source ranges recovered from the original JSON-LD document for diagnostics. */
+  sourceMap?: {
+    subjectRanges?: Map<string, Range>;
+    predicateRanges?: Map<string, Map<string, Range>>;
+  };
   definitions: Definition[];
   quads: any[];
   diagnostics: Diagnostic[];

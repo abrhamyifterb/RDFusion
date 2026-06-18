@@ -13,6 +13,9 @@ import XsdDatatype from '../../../../business/validation/jsonld/literal/rules/xs
 import NonStringIdCheck from '../../../../business/validation/jsonld/semantic/rules/non-string-id.js';
 import RelativeIriCheck from '../../../../business/validation/jsonld/semantic/rules/relative-iri.js';
 import EmptyLiteral from '../../../../business/validation/jsonld/literal/rules/empty-literal.js';
+import MissingTypeOrLang from '../../../../business/validation/jsonld/literal/rules/missing-type-lang.js';
+import MissingType from '../../../../business/validation/jsonld/semantic/rules/missing-type.js';
+import NonStringLiteral from '../../../../business/validation/jsonld/literal/rules/nonstring-literal.js';
 
 function ast(text: string) {
   const tree = parseTree(text, [], { allowTrailingComma: true, disallowComments: false });
@@ -114,4 +117,53 @@ describe('JSON-LD 1.1 loose-end standards audit', () => {
     expect(diagnostics).toHaveLength(1);
     expect(diagnostics[0]?.severity).toBe(DiagnosticSeverity.Warning);
   });
+
+  it('describes untyped value objects as profile guidance, not a JSON-LD syntax error', () => {
+    const text = JSON.stringify({ '@value': 'plain literal' });
+    const rule = new MissingTypeOrLang();
+    rule.init({ text, ast: ast(text) });
+
+    const diagnostics = rule.run();
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]?.message).toContain('plain literal');
+    expect(diagnostics[0]?.message).toContain('only if');
+    expect(diagnostics[0]?.severity).toBe(DiagnosticSeverity.Warning);
+  });
+
+  it('describes missing @type as RDFusion profile guidance, not invalid JSON-LD', () => {
+    const rule = new MissingType();
+    rule.init({ definitions: [{ id: 'https://example.com/node', range: { start: { line: 0, character: 1 }, end: { line: 0, character: 5 } } }] });
+
+    const diagnostics = rule.run();
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]?.message).toContain('valid JSON-LD');
+  });
+
+
+  it('treats non-string JSON-LD scalar literals as profile guidance only', () => {
+    const text = JSON.stringify({ count: 7, active: true, label: 'ok' });
+    const rule = new NonStringLiteral();
+    rule.init({ text, ast: ast(text) });
+
+    const diagnostics = rule.run();
+
+    expect(diagnostics).toHaveLength(2);
+    expect(diagnostics[0]?.message).toContain('JSON-LD allows');
+    expect(diagnostics.every(d => d.severity === DiagnosticSeverity.Warning)).toBe(true);
+  });
+
+  it('does not warn about strings or @id-coerced terms as untyped JSON-LD literals', () => {
+    const text = JSON.stringify({ ref: 'https://example.com/node', label: 'ok' });
+    const rule = new NonStringLiteral();
+    rule.init({
+      text,
+      ast: ast(text),
+      resolvedContext: {
+        terms: new Map([['ref', { '@id': 'https://example.com/ref', '@type': '@id' }]]),
+      },
+    });
+
+    expect(rule.run()).toHaveLength(0);
+  });
+
 });
