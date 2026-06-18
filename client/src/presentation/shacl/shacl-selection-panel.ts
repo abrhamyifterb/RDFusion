@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import type { LanguageClient } from 'vscode-languageclient/node';
 import type { WorkspaceIndexProgress, WorkspaceIndexResult } from '../../utils/workspace-notifier';
 
-interface ShaclSelectionSettings {
+export interface ShaclSelectionSettings {
 	mode: 'auto' | 'custom';
 	custom?: {
 		files: {
@@ -55,8 +55,10 @@ interface ListShapesResponse {
 }
 
 type EnsureWorkspaceShaclIndex = (onProgress?: (progress: WorkspaceIndexProgress) => void) => Promise<WorkspaceIndexResult>;
+type GetShaclSelection = () => ShaclSelectionSettings;
+type SaveShaclSelection = (selection: ShaclSelectionSettings) => Promise<void>;
 
-function normalizeSelection(raw: any): ShaclSelectionSettings {
+export function normalizeSelection(raw: any): ShaclSelectionSettings {
 	if (!raw || typeof raw !== 'object' || raw.mode !== 'custom') {
 		return { mode: 'auto' };
 	}
@@ -95,6 +97,8 @@ export class ShaclSelectionPanel {
 		private readonly client: LanguageClient,
 		private readonly ensureWorkspaceShaclIndex: EnsureWorkspaceShaclIndex,
 		private readonly output: vscode.OutputChannel,
+		private readonly getSelection: GetShaclSelection,
+		private readonly saveSelection: SaveShaclSelection,
 	) {
 		this.panel = panel;
 		this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
@@ -130,6 +134,8 @@ export class ShaclSelectionPanel {
 		client: LanguageClient,
 		ensureWorkspaceShaclIndex: EnsureWorkspaceShaclIndex,
 		output: vscode.OutputChannel,
+		getSelection: GetShaclSelection,
+		saveSelection: SaveShaclSelection,
 	): void {
 		const column = vscode.window.activeTextEditor?.viewColumn;
 		if (ShaclSelectionPanel.currentPanel) {
@@ -144,7 +150,7 @@ export class ShaclSelectionPanel {
 			column || vscode.ViewColumn.One,
 			{ enableScripts: true, retainContextWhenHidden: true }
 		);
-		ShaclSelectionPanel.currentPanel = new ShaclSelectionPanel(panel, client, ensureWorkspaceShaclIndex, output);
+		ShaclSelectionPanel.currentPanel = new ShaclSelectionPanel(panel, client, ensureWorkspaceShaclIndex, output, getSelection, saveSelection);
 	}
 
 	public dispose(): void {
@@ -176,9 +182,9 @@ export class ShaclSelectionPanel {
 			return;
 		}
 		if (msg.command === 'apply') {
-			const cfg = vscode.workspace.getConfiguration('rdfusion');
 			try {
-				await cfg.update('shacl.selection', normalizeSelection(msg.selection), vscode.ConfigurationTarget.Global);
+				const selection = normalizeSelection(msg.selection);
+				await this.saveSelection(selection);
 				await this.postMessage({ command: 'applied' });
 				await this.refreshFromServer('Selection applied');
 			} catch (err: any) {
@@ -205,8 +211,7 @@ export class ShaclSelectionPanel {
 		}
 
 		this.refreshInFlight = (async () => {
-			const cfg = vscode.workspace.getConfiguration('rdfusion');
-			const selection = normalizeSelection(cfg.get<ShaclSelectionSettings>('shacl.selection', { mode: 'auto' }));
+			const selection = this.getSelection();
 			let softTimer: NodeJS.Timeout | undefined;
 			try {
 				softTimer = setTimeout(() => {

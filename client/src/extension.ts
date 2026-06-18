@@ -48,12 +48,30 @@ import { StatusBarManager } from "./presentation/status-bar/status-bar";
 import { RdfScm } from "./presentation/rdf-diff/ttl/ttl-scm-diff";
 import { registerJsonLdBridge } from "./presentation/refactor/refactor-jsonld-prefix";
 import { registerRdfDiffCommands } from "./presentation/rdf-diff/ttl/ttl-diff-commands";
-import { ShaclSelectionPanel } from "./presentation/shacl/shacl-selection-panel";
+import {
+  ShaclSelectionPanel,
+  ShaclSelectionSettings,
+  normalizeSelection,
+} from "./presentation/shacl/shacl-selection-panel";
 import { ShaclCoveragePanel } from "./presentation/shacl/shacl-coverage-panel";
 
 let client: LanguageClient;
 
+const SHACL_SELECTION_STATE_KEY = "rdfusion.shacl.selection.v1";
+
 export async function activate(context: ExtensionContext) {
+  const getWorkspaceShaclSelection = (): ShaclSelectionSettings =>
+    normalizeSelection(context.workspaceState.get(SHACL_SELECTION_STATE_KEY));
+
+  const saveWorkspaceShaclSelection = async (
+    selection: ShaclSelectionSettings,
+  ): Promise<void> => {
+    await context.workspaceState.update(
+      SHACL_SELECTION_STATE_KEY,
+      normalizeSelection(selection),
+    );
+  };
+
   // The server is implemented in node
   const serverModule = context.asAbsolutePath(path.join("out", "server.js"));
 
@@ -100,9 +118,7 @@ export async function activate(context: ExtensionContext) {
             .get("common.validations", defaultIriSchemeConfig),
         },
         shacl: {
-          selection: workspace
-            .getConfiguration("rdfusion")
-            .get("shacl.selection", { mode: "auto" }),
+          selection: getWorkspaceShaclSelection(),
         },
         performance: {
           trace: workspace
@@ -127,6 +143,16 @@ export async function activate(context: ExtensionContext) {
   );
 
   await client.start();
+
+  const pushWorkspaceShaclSelection = async (
+    selection = getWorkspaceShaclSelection(),
+  ): Promise<void> => {
+    await client.sendNotification("rdfusion/shacl/setSelection", {
+      selection: normalizeSelection(selection),
+    });
+  };
+
+  await pushWorkspaceShaclSelection();
   
   const fileTreeProvider = new FileTreeProvider();
 
@@ -179,6 +205,13 @@ export async function activate(context: ExtensionContext) {
         client,
         indexShaclWorkspace,
         rdfusionOutput,
+        getWorkspaceShaclSelection,
+        async (selection: ShaclSelectionSettings) => {
+          const normalized = normalizeSelection(selection);
+          await saveWorkspaceShaclSelection(normalized);
+          await pushWorkspaceShaclSelection(normalized);
+          ShaclCoveragePanel.refreshCurrent("SHACL selection changed");
+        },
       );
     }),
     vscode.commands.registerCommand("rdfusion.openShaclCoverage", () => {

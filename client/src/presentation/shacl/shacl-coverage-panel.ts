@@ -127,6 +127,12 @@ export class ShaclCoveragePanel {
 		ShaclCoveragePanel.currentPanel = new ShaclCoveragePanel(panel, client, ensureWorkspaceRdfIndex, output);
 	}
 
+	public static refreshCurrent(reason: string): void {
+		if (ShaclCoveragePanel.currentPanel) {
+			void ShaclCoveragePanel.currentPanel.refreshFromServer(reason);
+		}
+	}
+
 	public dispose(): void {
 		ShaclCoveragePanel.currentPanel = undefined;
 		this.disposables.forEach(d => d.dispose());

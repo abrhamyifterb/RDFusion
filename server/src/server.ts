@@ -36,7 +36,11 @@ import {
   defaultRDFusionConfigSettings,
   normalizeRDFusionConfigSettings,
 } from "./utils/irdfusion-config-settings.js";
-import { DEFAULT_SHACL_SELECTION } from "./data/shacl/shacl-selection.js";
+import {
+  DEFAULT_SHACL_SELECTION,
+  ShaclSelectionSettings,
+  normalizeShaclSelectionSettings,
+} from "./data/shacl/shacl-selection.js";
 import { GroupBySubjectCommand } from "./business/triple-management/grouping/group-by-subject-command.js";
 import { FilterTriplesCommand } from "./business/triple-management/filtering/filter-triples-command.js";
 import { VoIDGenerateCommand } from "./business/triple-management/void-generate/void-generate-command.js";
@@ -77,6 +81,7 @@ let serverConfigSettings: RDFusionConfigSettings =
   defaultRDFusionConfigSettings();
 let validationConfigRevision = 0;
 let validationSelectionRevision = 0;
+let activeShaclSelection: ShaclSelectionSettings = DEFAULT_SHACL_SELECTION;
 
 const cache = new Cache<string, any>(100);
 const performanceTracer = new PerformanceTracer(connection);
@@ -119,7 +124,7 @@ const termMetadataService = new TermMetadataService(
   prefixRegistry,
   termProvider,
   shapeManager,
-  () => serverConfigSettings.shacl.selection,
+  () => activeShaclSelection,
 );
 
 const ttlDiff = new RdfDiffService(connection, documents);
@@ -193,7 +198,43 @@ function stableStringify(value: unknown): string {
   return JSON.stringify(value);
 }
 
-let lastSelectionFingerprint = stableStringify(serverConfigSettings.shacl.selection);
+let lastSelectionFingerprint = stableStringify(activeShaclSelection);
+
+function effectiveConfigSettings(): RDFusionConfigSettings {
+  return {
+    ...serverConfigSettings,
+    shacl: {
+      ...serverConfigSettings.shacl,
+      selection: activeShaclSelection,
+    },
+  };
+}
+
+function updateRuntimeSettings(settings = effectiveConfigSettings()): void {
+  performanceTracer.updateSettings(settings);
+  validationManager.updateSettings(settings);
+  termProvider.updateSettings(settings);
+  ttlProvider.updateSettings(settings);
+  jsonldProvider.updateSettings(settings);
+  jsonldTermProvider.updateSettings(settings);
+  turtleFormatterCommand.updateSettings(settings);
+}
+
+function updateActiveShaclSelection(rawSelection: unknown, reason: string): void {
+  const nextSelection = normalizeShaclSelectionSettings(rawSelection);
+  const nextFingerprint = stableStringify(nextSelection);
+  activeShaclSelection = nextSelection;
+  if (nextFingerprint !== lastSelectionFingerprint) {
+    validationSelectionRevision++;
+    lastSelectionFingerprint = nextFingerprint;
+  }
+  updateRuntimeSettings();
+  performanceTracer.log("shacl.selectionChanged", {
+    reason,
+    selectionRevision: validationSelectionRevision,
+  });
+  invalidateAndRefreshOpenDiagnostics(reason);
+}
 
 const validationScheduler = new ValidationScheduler(
   connection,
@@ -295,20 +336,15 @@ connection.onInitialize((params: InitializeParams) => {
 
   if (initOpts) {
     serverConfigSettings = normalizeRDFusionConfigSettings(initOpts);
-    lastSelectionFingerprint = stableStringify(serverConfigSettings.shacl.selection);
+    activeShaclSelection = serverConfigSettings.shacl.selection;
+    lastSelectionFingerprint = stableStringify(activeShaclSelection);
   }
 
-  performanceTracer.updateSettings(serverConfigSettings);
+  updateRuntimeSettings();
   performanceTracer.log("server.initialize", {
     hasConfigurationCapability,
     hasWorkspaceFolderCapability,
   });
-  validationManager.updateSettings(serverConfigSettings);
-  termProvider.updateSettings(serverConfigSettings);
-  ttlProvider.updateSettings(serverConfigSettings);
-  jsonldProvider.updateSettings(serverConfigSettings);
-  jsonldTermProvider.updateSettings(serverConfigSettings);
-  turtleFormatterCommand.updateSettings(serverConfigSettings);
 
   return result;
 });
@@ -341,26 +377,13 @@ connection.onDidChangeConfiguration((change) => {
     );
   }
 
-  const nextSelectionFingerprint = stableStringify(
-    serverConfigSettings.shacl.selection,
-  );
   validationConfigRevision++;
-  if (nextSelectionFingerprint !== lastSelectionFingerprint) {
-    validationSelectionRevision++;
-    lastSelectionFingerprint = nextSelectionFingerprint;
-  }
 
-  performanceTracer.updateSettings(serverConfigSettings);
+  updateRuntimeSettings();
   performanceTracer.log("server.configurationChanged", {
     configRevision: validationConfigRevision,
     selectionRevision: validationSelectionRevision,
   });
-  validationManager.updateSettings(serverConfigSettings);
-  termProvider.updateSettings(serverConfigSettings);
-  ttlProvider.updateSettings(serverConfigSettings);
-  jsonldProvider.updateSettings(serverConfigSettings);
-  jsonldTermProvider.updateSettings(serverConfigSettings);
-  turtleFormatterCommand.updateSettings(serverConfigSettings);
   invalidateAndRefreshOpenDiagnostics("configuration");
 });
 
@@ -393,6 +416,13 @@ connection.onRequest(
   "rdfusion/workspace/indexRdfFiles",
   async (params: { files?: { uri: string; version?: number; size?: number }[]; final?: boolean }) => {
     return indexWorkspaceFilesRequest("RDF workspace", params);
+  },
+);
+
+connection.onNotification(
+  "rdfusion/shacl/setSelection",
+  (params: { selection?: unknown }) => {
+    updateActiveShaclSelection(params?.selection, "shacl-selection");
   },
 );
 
@@ -789,7 +819,7 @@ connection.onRenameRequest((params) => {
 connection.onRequest("rdfusion/shacl/listShapes", async () => {
   return performanceTracer.time("shacl.listShapes", async () => {
     return shapeManager.listShapes(
-      serverConfigSettings.shacl?.selection ?? DEFAULT_SHACL_SELECTION,
+      activeShaclSelection,
       { includeTargetGroups: false },
     );
   });
@@ -797,7 +827,7 @@ connection.onRequest("rdfusion/shacl/listShapes", async () => {
 
 connection.onRequest("rdfusion/coverage", async () => {
   return performanceTracer.time("shacl.coverage", async () => {
-    const selection = serverConfigSettings.shacl?.selection ?? DEFAULT_SHACL_SELECTION;
+    const selection = activeShaclSelection;
     return computeWorkspaceCoverage({
       snapshots: dataManager.getAllSnapshots(),
       shapeSourceUris: shapeManager.getIndexedShapeUris(),

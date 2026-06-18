@@ -3,7 +3,7 @@
   "description": "RDFusion brings RDF editing and validation directly into VS Code.",
   "author": "RDFusion",
   "license": "MIT",
-  "version": "2.1.1",
+  "version": "2.1.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/abrhamyifterb/RDFusion"
@@ -462,29 +462,6 @@
           "type": "string",
           "default": "http, https, mailto, tel",
           "description": "Allowed IRI schemes, comma-separated"
-        },
-        "rdfusion.shacl.selection": {
-          "type": "object",
-          "default": {
-            "mode": "auto"
-          },
-          "markdownDescription": "SHACL validation selection. Use `auto` to apply all indexed SHACL shapes, or `custom` to apply selected shape/target/property constraints.",
-          "properties": {
-            "mode": {
-              "type": "string",
-              "enum": [
-                "auto",
-                "custom"
-              ],
-              "default": "auto"
-            },
-            "custom": {
-              "type": "object",
-              "default": {
-                "files": []
-              }
-            }
-          }
         },
         "rdfusion.performance.trace": {
           "type": "boolean",
