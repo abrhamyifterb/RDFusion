@@ -8,7 +8,7 @@ import { PrefixDeclarationCodeActionProvider } from '../../../business/validatio
 const makeRegistry = (map: Record<string, string>) => {
   const fetcher = {
     getPrefixes: vi.fn(async (url: string) => {
-      if (url.endsWith('popular/all.file.json')) return {};
+      if (url.endsWith('popular/all.json')) return map;
       const key = url.split('/').pop()!.replace('.file.json', '');
       return map[key] ? { [key]: map[key] } : {};
     }),
@@ -61,6 +61,25 @@ describe('PrefixDeclarationCodeActionProvider', () => {
     expect(actions).toHaveLength(1);
     expect(actions[0].title).toContain('not found in prefix.cc');
     expect(actions[0].edit?.changes?.[uri]?.[0].newText).toBe('@prefix local: <https://example.org/local#> .\n');
+  });
+
+
+  it('declares ADMS from prefix.cc cache without adding it to built-in defaults', async () => {
+    const uri = 'file:///data.jsonld';
+    const doc = TextDocument.create(uri, 'jsonld', 1, '{\n  "@type": "adms:Asset"\n}\n');
+    const provider = new PrefixDeclarationCodeActionProvider(
+      makeRegistry({ adms: 'http://www.w3.org/ns/adms#' }),
+      documentsWith(doc),
+    );
+
+    const actions = await provider.provideCodeActions(params(
+      uri,
+      diagnostic('Undefined prefix "adms" in IRI "adms:Asset".', 'undefinedPrefix'),
+    ));
+
+    expect(actions).toHaveLength(1);
+    expect(actions[0].title).toContain('from prefix.cc');
+    expect(actions[0].edit?.changes?.[uri]?.[0].newText).toContain('"adms": "http://www.w3.org/ns/adms#"');
   });
 
   it('adds a JSON-LD @context mapping from prefix.cc', async () => {

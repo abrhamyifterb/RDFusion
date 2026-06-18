@@ -2,7 +2,7 @@ import { LRUCache } from 'lru-cache';
 
 export class Cache {
 	private prefixes = new LRUCache<string, string>({
-		max: 3500,
+		max: 20_000,
 		ttl: 86_400_000,
 		ttlAutopurge: true,   
 		updateAgeOnGet: true,

@@ -3,6 +3,12 @@ import { IFetcher } from './ifetcher';
 import { DC_NS, DCAT_NS, DCTERMS_NS, FOAF_NS, OWL_NS, PROV_NS, RDF_NS, RDFS_NS, SCHEMA_NS, SKOS_NS, XSD_NS } from '../../../data/rdf/rdf-vocabulary';
 
 export const PREFIX_CC_FETCH_TIMEOUT_MS = 5000;
+export const PREFIX_CC_POPULAR_ALL_URL = 'https://prefix.cc/popular/all.json';
+export const PREFIX_CC_AGGREGATE_URLS = [
+  PREFIX_CC_POPULAR_ALL_URL,
+  'http://prefix.cc/popular/all.json',
+  'https://prefix.cc/context.jsonld',
+];
 
 export const DEFAULT_PREFIXES: Record<string, string> = {
   rdf:     RDF_NS,
@@ -25,26 +31,72 @@ export class PrefixRegistry {
 
   private dynPrefixToIri = new Cache();
   private dynIriToPrefix = new Cache(); 
+  private preloadRemotePromise: Promise<void>;
+  private remoteAggregateLoaded = false;
 
   constructor(private fetcher: IFetcher) {
     for (const [p, iri] of Object.entries(DEFAULT_PREFIXES)) {
       this.setPinned(p, iri);
     }
-    void this.preloadRemote();
+    this.preloadRemotePromise = this.preloadRemote();
   }
 
   private async preloadRemote() {
-    try {
-      const data = await this.fetcher.getPrefixes<Record<string, string>>(
-        'https://prefix.cc/popular/all.file.json',
-        { timeoutMs: PREFIX_CC_FETCH_TIMEOUT_MS },
-      );
-      if (data && typeof data === 'object') {
-        for (const [p, iri] of Object.entries(data)) {this.setDynamic(p, iri);}
+    await this.loadRemoteAggregate();
+  }
+
+  private async loadRemoteAggregate(): Promise<void> {
+    let loadedAny = false;
+
+    for (const url of PREFIX_CC_AGGREGATE_URLS) {
+      try {
+        const data = await this.fetcher.getPrefixes<unknown>(
+          url,
+          { timeoutMs: PREFIX_CC_FETCH_TIMEOUT_MS },
+        );
+        const entries = this.extractPrefixEntries(data);
+        if (entries.length > 0) {
+          for (const [p, iri] of entries) {this.setDynamic(p, iri);}
+          loadedAny = true;
+          break;
+        }
+      } catch {
+        /*  */
       }
-    } catch {
-      /*  */
     }
+
+    this.remoteAggregateLoaded = this.remoteAggregateLoaded || loadedAny;
+  }
+
+  private extractPrefixEntries(data: unknown): [string, string][] {
+    if (!data || typeof data !== 'object') {return [];}
+
+    const entries: [string, string][] = [];
+    const objects: Record<string, unknown>[] = [data as Record<string, unknown>];
+    const context = (data as Record<string, unknown>)['@context'];
+    if (context && typeof context === 'object' && !Array.isArray(context)) {
+      objects.unshift(context as Record<string, unknown>);
+    }
+
+    for (const object of objects) {
+      for (const [rawPrefix, rawValue] of Object.entries(object)) {
+        const prefix = rawPrefix.trim();
+        if (!prefix || prefix.startsWith('@')) {continue;}
+
+        let iri: string | undefined;
+        if (typeof rawValue === 'string') {
+          iri = rawValue;
+        } else if (rawValue && typeof rawValue === 'object' && !Array.isArray(rawValue)) {
+          const id = (rawValue as Record<string, unknown>)['@id'];
+          if (typeof id === 'string') {iri = id;}
+        }
+
+        const cleanIri = iri?.trim();
+        if (cleanIri) {entries.push([prefix, cleanIri]);}
+      }
+    }
+
+    return entries;
   }
 
   private setPinned(prefix: string, iri: string) {
@@ -64,7 +116,11 @@ export class PrefixRegistry {
   }
 
   public getIri(prefix: string): string | undefined {
-    return this.dynPrefixToIri.get(prefix) ?? this.pinnedPrefixToIri.get(prefix);
+    const cleanPrefix = prefix.trim();
+    return this.dynPrefixToIri.get(cleanPrefix)
+      ?? this.pinnedPrefixToIri.get(cleanPrefix)
+      ?? this.dynPrefixToIri.get(cleanPrefix.toLowerCase())
+      ?? this.pinnedPrefixToIri.get(cleanPrefix.toLowerCase());
   }
 
   public getPrefix(iri: string): string | undefined {
@@ -108,20 +164,47 @@ export class PrefixRegistry {
   }
 
   public async ensure(prefix: string): Promise<string | undefined> {
-    const hit = this.getIri(prefix);
+    const cleanPrefix = prefix.trim();
+    if (!cleanPrefix) {return undefined;}
+
+    let hit = this.getIri(cleanPrefix);
     if (hit !== undefined) {return hit;}
 
-    try {
-      const data = await this.fetcher.getPrefixes<Record<string, string>>(
-        `https://prefix.cc/${encodeURIComponent(prefix)}.file.json`,
-        { timeoutMs: PREFIX_CC_FETCH_TIMEOUT_MS },
-      );
-      const iri = data?.[prefix];
-      if (iri) {
-        this.setDynamic(prefix, iri);
-        return iri;
+    await this.preloadRemotePromise;
+    hit = this.getIri(cleanPrefix);
+    if (hit !== undefined) {return hit;}
+
+    // The single-prefix prefix.cc endpoint can be unavailable for some
+    // prefixes that are present in the aggregate cache, for example adms. If
+    // startup preload failed or timed out, retry the aggregate cache on demand
+    // before reporting the prefix as unknown.
+    if (!this.remoteAggregateLoaded) {
+      await this.loadRemoteAggregate();
+      hit = this.getIri(cleanPrefix);
+      if (hit !== undefined) {return hit;}
+    }
+
+    const lookupPrefixes = Array.from(new Set([cleanPrefix, cleanPrefix.toLowerCase()]));
+    for (const lookupPrefix of lookupPrefixes) {
+      for (const scheme of ['https', 'http']) {
+        try {
+          const data = await this.fetcher.getPrefixes<unknown>(
+            `${scheme}://prefix.cc/${encodeURIComponent(lookupPrefix)}.file.json`,
+            { timeoutMs: PREFIX_CC_FETCH_TIMEOUT_MS },
+          );
+          const entries = this.extractPrefixEntries(data);
+          const match = entries.find(([p]) =>
+            p === cleanPrefix || p.toLowerCase() === cleanPrefix.toLowerCase(),
+          );
+          if (match) {
+            const [canonicalPrefix, iri] = match;
+            this.setDynamic(canonicalPrefix, iri);
+            if (canonicalPrefix !== cleanPrefix) {this.setDynamic(cleanPrefix, iri);}
+            return iri;
+          }
+        } catch { /* Try the next prefix.cc lookup URL. */ }
       }
-    } catch { /*  */ }
+    }
     return undefined;
   }
 
@@ -158,18 +241,23 @@ export class PrefixRegistry {
 
   private iriVariants(iri: string): string[] {
     const t = iri.trim();
-    const last = t.charAt(t.length - 1);
-    const hasSlash = last === '/';
-    const hasHash = last === '#';
-    const base = (hasSlash || hasHash) ? t.slice(0, -1) : t;
+    const schemeVariants = new Set<string>([t]);
+    if (t.startsWith('http://'))  {schemeVariants.add('https://' + t.slice(7));}
+    if (t.startsWith('https://')) {schemeVariants.add('http://'  + t.slice(8));}
 
-    const out = new Set<string>([t]);
-    if (hasSlash) {out.add(`${base}#`);}
-    else if (hasHash) {out.add(`${base}/`);}
-    else { out.add(`${t}/`); out.add(`${t}#`); }
+    const out = new Set<string>();
+    for (const variant of schemeVariants) {
+      const last = variant.charAt(variant.length - 1);
+      const hasSlash = last === '/';
+      const hasHash = last === '#';
+      const base = (hasSlash || hasHash) ? variant.slice(0, -1) : variant;
 
-    if (t.startsWith('http://'))  {out.add('https://' + t.slice(7));}
-    if (t.startsWith('https://')) {out.add('http://'  + t.slice(8));}
+      out.add(variant);
+      if (hasSlash) {out.add(`${base}#`);}
+      else if (hasHash) {out.add(`${base}/`);}
+      else { out.add(`${variant}/`); out.add(`${variant}#`); }
+    }
+
     return Array.from(out);
   }
 }
