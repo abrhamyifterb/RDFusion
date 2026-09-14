@@ -112,6 +112,10 @@
         "title": "RDFusion: Toggle JSON-LD Validations"
       },
       {
+        "command": "rdfusion.configureJsonldAutocomplete",
+        "title": "RDFusion: Toggle JSON-LD Autocomplete"
+      },
+      {
         "command": "rdfusion.configureIriSchemeValidation",
         "title": "RDFusion: IRI Scheme Validation Configuration"
       },

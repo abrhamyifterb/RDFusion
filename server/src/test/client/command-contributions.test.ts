@@ -24,6 +24,15 @@ function command(id: string) {
 }
 
 describe('VS Code command contributions', () => {
+  it('exposes JSON-LD autocomplete configuration in the command palette', () => {
+    const id = 'rdfusion.configureJsonldAutocomplete';
+    expect(command(id).title).toBe('RDFusion: Toggle JSON-LD Autocomplete');
+    expect(command(id).enablement).toBeUndefined();
+    expect(
+      packageJson.contributes.menus?.commandPalette?.find((entry) => entry.command === id),
+    ).toBeUndefined();
+  });
+
   it('limits active-editor RDF graph commands to Turtle and JSON-LD documents', () => {
     const rdfEditorEnablement = 'editorLangId == turtle || editorLangId == jsonld';
 
