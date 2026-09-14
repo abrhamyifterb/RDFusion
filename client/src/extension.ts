@@ -156,15 +156,15 @@ export async function activate(context: ExtensionContext) {
   
   const fileTreeProvider = new FileTreeProvider();
 
-  //vscode.window.registerTreeDataProvider("fileExplorer", fileTreeProvider);
-
-  vscode.window.createTreeView("fileExplorer", {
-    treeDataProvider: fileTreeProvider,
-    showCollapseAll: true,
-    canSelectMany: true,
-  });
-
-  watchFiles(fileTreeProvider);
+  context.subscriptions.push(
+    fileTreeProvider,
+    vscode.window.createTreeView("fileExplorer", {
+      treeDataProvider: fileTreeProvider,
+      showCollapseAll: true,
+      canSelectMany: true,
+    }),
+    watchFiles(fileTreeProvider),
+  );
 
   context.subscriptions.push(
     vscode.commands.registerCommand("rdfusion.openFile", (uri: vscode.Uri) => {

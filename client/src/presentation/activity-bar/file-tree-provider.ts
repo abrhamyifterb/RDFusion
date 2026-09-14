@@ -4,12 +4,16 @@ import { FileItem } from './file-item';
 import { FolderItem } from './folder-item';
 import { scanWorkspace } from '../../utils/workspace-find-files';
 
-export class FileTreeProvider implements vscode.TreeDataProvider<FolderItem | FileItem> {
+export class FileTreeProvider implements vscode.TreeDataProvider<FolderItem | FileItem>, vscode.Disposable {
     private _onDidChangeTreeData: vscode.EventEmitter<FolderItem | FileItem | undefined | void> = new vscode.EventEmitter<FolderItem | FileItem | undefined | void>();
     readonly onDidChangeTreeData: vscode.Event<FolderItem | FileItem | undefined | void> = this._onDidChangeTreeData.event;
 
     refresh(): void {
         this._onDidChangeTreeData.fire();
+    }
+
+    dispose(): void {
+        this._onDidChangeTreeData.dispose();
     }
 
     getTreeItem(element: FolderItem | FileItem): vscode.TreeItem {
@@ -109,9 +113,10 @@ export class FileTreeProvider implements vscode.TreeDataProvider<FolderItem | Fi
 }
 
 
-export function watchFiles(fileTreeProvider: FileTreeProvider): void {
+export function watchFiles(fileTreeProvider: FileTreeProvider): vscode.FileSystemWatcher {
     const watcher = vscode.workspace.createFileSystemWatcher("**/*.{ttl,jsonld}");
     watcher.onDidChange(() => fileTreeProvider.refresh());
     watcher.onDidCreate(() => fileTreeProvider.refresh());
     watcher.onDidDelete(() => fileTreeProvider.refresh());
+    return watcher;
 }
