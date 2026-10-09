@@ -1,0 +1,4 @@
+@prefix ex: <http://example.com/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:subject ex:value "3.14"^^xsd:integer .

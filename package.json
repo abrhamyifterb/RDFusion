@@ -484,10 +484,12 @@
     "compile": "tsc -b",
     "watch": "tsc -b -w",
     "lint": "eslint",
-    "test": "sh ./scripts/e2e.sh",
+    "test": "npm run test:unit && npm run test:e2e",
     "test:watch": "vitest",
+    "test:unit": "npm run test:client-unit && npm run test:server",
     "test:client-unit": "vitest run --config vitest.client-unit.config.ts",
     "test:server": "vitest run --config vitest.config.ts --dir ./server/src/test",
+    "test:e2e": "npm run compile && npm run build && sh ./scripts/e2e.sh",
     "test:coverage": "vitest run --coverage",
     "test:perf": "vitest --config vitest.perf.config.ts --run"
   },

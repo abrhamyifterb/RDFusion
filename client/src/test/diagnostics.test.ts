@@ -8,34 +8,28 @@ import * as assert from 'assert';
 import { getDocUri, activate } from './helper';
 
 suite('Should get diagnostics', () => {
-	const docUri = getDocUri('diagnostics.txt');
+	const docUri = getDocUri('diagnostics.ttl');
 
-	test('Diagnoses uppercase texts', async () => {
-		await testDiagnostics(docUri, [
-			{ message: 'ANY is all uppercase.', range: toRange(0, 0, 0, 3), severity: vscode.DiagnosticSeverity.Warning, source: 'ex' },
-			{ message: 'ANY is all uppercase.', range: toRange(0, 14, 0, 17), severity: vscode.DiagnosticSeverity.Warning, source: 'ex' },
-			{ message: 'OS is all uppercase.', range: toRange(0, 18, 0, 20), severity: vscode.DiagnosticSeverity.Warning, source: 'ex' }
-		]);
+	test('reports an invalid Turtle datatype', async () => {
+		await activate(docUri);
+		const diagnostics = await waitForDiagnostics(docUri);
+
+		assert.ok(diagnostics.length > 0, 'Expected RDFusion to publish a diagnostic.');
+		assert.ok(
+			diagnostics.some(diagnostic => diagnostic.message.includes('Invalid lexical form')),
+			'Expected an invalid XSD lexical form diagnostic.',
+		);
 	});
 });
 
-function toRange(sLine: number, sChar: number, eLine: number, eChar: number) {
-	const start = new vscode.Position(sLine, sChar);
-	const end = new vscode.Position(eLine, eChar);
-	return new vscode.Range(start, end);
-}
-
-async function testDiagnostics(docUri: vscode.Uri, expectedDiagnostics: vscode.Diagnostic[]) {
-	await activate(docUri);
-
-	const actualDiagnostics = vscode.languages.getDiagnostics(docUri);
-
-	assert.equal(actualDiagnostics.length, expectedDiagnostics.length);
-
-	expectedDiagnostics.forEach((expectedDiagnostic, i) => {
-		const actualDiagnostic = actualDiagnostics[i];
-		assert.equal(actualDiagnostic.message, expectedDiagnostic.message);
-		assert.deepEqual(actualDiagnostic.range, expectedDiagnostic.range);
-		assert.equal(actualDiagnostic.severity, expectedDiagnostic.severity);
-	});
+async function waitForDiagnostics(docUri: vscode.Uri): Promise<readonly vscode.Diagnostic[]> {
+	const timeoutAt = Date.now() + 10_000;
+	while (Date.now() < timeoutAt) {
+		const diagnostics = vscode.languages.getDiagnostics(docUri);
+		if (diagnostics.length > 0) {
+			return diagnostics;
+		}
+		await new Promise(resolve => setTimeout(resolve, 100));
+	}
+	return vscode.languages.getDiagnostics(docUri);
 }
