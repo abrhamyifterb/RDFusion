@@ -33,7 +33,7 @@ export class FileTreeProvider implements vscode.TreeDataProvider<FolderItem | Fi
                 return [];
             }
             const pattern = new vscode.RelativePattern(workspaceFolder, '**/*.{jsonld,ttl}');
-            const files = await scanWorkspace(pattern.pattern);
+            const files = await scanWorkspace(pattern);
             return this.buildTree(files, workspaceFolder);
         } else {
             if (element instanceof FolderItem) {

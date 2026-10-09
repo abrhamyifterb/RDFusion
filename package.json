@@ -486,6 +486,7 @@
     "lint": "eslint",
     "test": "sh ./scripts/e2e.sh",
     "test:watch": "vitest",
+    "test:client-unit": "vitest run --config vitest.client-unit.config.ts",
     "test:server": "vitest run --config vitest.config.ts --dir ./server/src/test",
     "test:coverage": "vitest run --coverage",
     "test:perf": "vitest --config vitest.perf.config.ts --run"
