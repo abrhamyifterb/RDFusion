@@ -14,7 +14,10 @@ const RDF = {
 export class GroupFormatter {
   private subjIndex = new SubjectIndex();
 
-  public group(graph: ParsedGraph | JsonldParsedGraph): string {
+  public group(
+    graph: ParsedGraph | JsonldParsedGraph,
+    commentsBeforeSubject: ReadonlyMap<string, readonly string[]> = new Map(),
+  ): string {
     const quads = graph.quads;
 
     const prefixes: Record<string,string> = {};
@@ -167,6 +170,8 @@ export class GroupFormatter {
       const triples = this.subjIndex.getBySubject(id, graph);
       if (!triples.length) {continue;}
 
+      out.push(...(commentsBeforeSubject.get(id) ?? []));
+
       const subjText = render(triples[0].subject);
       let block = `${subjText} `;
 
@@ -199,6 +204,8 @@ export class GroupFormatter {
     for (const id of Array.from(specialListSubjects)) {
       const items    = fullListMap.get(id)!;
       const subjText = `( ${items.map(render).join(' ')} )`;
+
+      out.push(...(commentsBeforeSubject.get(id) ?? []));
 
       const others = quads.filter(q =>
         q.subject.value===id &&

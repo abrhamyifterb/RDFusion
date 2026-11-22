@@ -7,6 +7,7 @@ import { RDFusionConfigSettings } from '../../../../utils/irdfusion-config-setti
 import { PrefixRegistry } from '../../../autocomplete/prefix/prefix-registry';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { TurtleFormatter } from './turtle-formatter';
+import { TurtleCommentPreservationError } from './turtle-comment-preserver.js';
 
 
 
@@ -40,7 +41,28 @@ export class TurtleFormatterCommand {
 				return;
 			}
 
-			const formattedText = await new TurtleFormatter().format(parsed, this.registry, this.configSettings.turtle.formatting);
+			const commentCount = parsed.comments?.length ?? 0;
+			if (commentCount > 0) {
+				const proceedTitle = 'Format and preserve comments';
+				const choice = await this.connection.window.showWarningMessage(
+					`This document contains ${commentCount} Turtle comment${commentCount === 1 ? '' : 's'}. Comment text will be preserved, but inline comments may move to a nearby standalone line.`,
+					{ title: proceedTitle },
+					{ title: 'Cancel' },
+				);
+				if (choice?.title !== proceedTitle) {return;}
+			}
+
+			const formattedText = await new TurtleFormatter().format(
+				parsed,
+				this.registry,
+				this.configSettings.turtle.formatting,
+				doc.getText(),
+			);
+
+			if (this.documents.get(uri)?.version !== doc.version) {
+				this.connection.window.showWarningMessage('Turtle formatting was cancelled because the document changed while formatting.');
+				return;
+			}
 			
 			const fullRange = fullDocumentRange(doc);
 
@@ -48,6 +70,9 @@ export class TurtleFormatterCommand {
 				changes: { [uri]: [ TextEdit.replace(fullRange, formattedText) ] }
 			});
 		} catch (error: any) {
+			if (error instanceof TurtleCommentPreservationError) {
+				this.connection.window.showWarningMessage(error.message);
+			}
 			this.connection.console.error(`[Turtle Formatter] Failed to format Turtle: ${error.message || error.toString()}`);
 			console.error(`[Turtle Formatter] Failed to format Turtle: ${error.message || error.toString()}`);
 			return;

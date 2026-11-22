@@ -11,16 +11,23 @@ import { breakSubject } from './transformations/break-subject';
 import { breakPredObj } from './transformations/break-pred-obj';
 import { blankLineBetweenSubjects } from './transformations/blank-line-between-subjects';
 import { PrefixRegistry } from '../../../autocomplete/prefix/prefix-registry';
+import {
+	assertTurtleCommentsPreserved,
+	createTurtleCommentPlan,
+	restoreTurtleComments,
+} from './turtle-comment-preserver.js';
 
 export class TurtleFormatter {
 	public async format(
 		parsed: ParsedGraph,
 		registry: PrefixRegistry,
-		cfg: any
+		cfg: any,
+		sourceText = '',
 	): Promise<string> {
 		const groupFormatter = new GroupFormatter();
+		const commentPlan = createTurtleCommentPlan(sourceText, parsed);
 
-		const groupedText = groupFormatter.group(parsed);
+		const groupedText = groupFormatter.group(parsed, commentPlan.commentsBeforeSubject);
 		
 		let lines = groupedText.split('\n');
 		lines = numericUntyped(lines, cfg);
@@ -33,6 +40,9 @@ export class TurtleFormatter {
 		lines = blankLineBetweenSubjects(lines, cfg);
 		lines = breakSubject(lines, cfg);
 
-		return lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
+		const formattedText = lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
+		const withComments = restoreTurtleComments(formattedText, commentPlan);
+		assertTurtleCommentsPreserved(withComments, parsed.comments ?? []);
+		return withComments;
 	}
 }

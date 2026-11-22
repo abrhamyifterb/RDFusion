@@ -16,7 +16,6 @@ export function splitTopLevel(str: string, sep: string): string[] {
 				inString = false;
 			}
 		}
-		console.log(inString);
 		if (!inString) {
 			if (ch === '(') {depthP++;}
 			else if (ch === ')') {depthP--;}

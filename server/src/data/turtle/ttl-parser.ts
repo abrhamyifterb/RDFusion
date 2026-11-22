@@ -13,6 +13,7 @@ export default class MillianRDFParser implements IRDFParser {
   
   async parse(input: string): Promise<ParsedGraph> {
     try {
+      const comments = this.millianParser.getCommentTokens(input);
       const millianResult = this.millianParser.parse(input);
       let prefixes = {} ;
       let tokens: unknown[] = [];
@@ -40,6 +41,7 @@ export default class MillianRDFParser implements IRDFParser {
         quads,
         tokens,
         prefixes,
+        comments,
         errors: [...millianResult.errors, ...millianResult.semanticErrors],
       };
     } catch (error:unknown) {

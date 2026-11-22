@@ -12,7 +12,18 @@ export interface ParsedGraph {
   quads: any[];
   tokens: any[];
   prefixes?: Record<string,string>;
+  comments?: TurtleComment[];
   errors?: any[];
+}
+
+export interface TurtleComment {
+  image: string;
+  startOffset: number;
+  endOffset: number;
+  startLine: number;
+  endLine: number;
+  startColumn: number;
+  endColumn: number;
 }
 
 export interface Definition {

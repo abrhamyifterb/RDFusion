@@ -30,6 +30,26 @@ describe('data/turtle: MillianRDFParser', () => {
     expect(iri(res.quads[0],'s')).toBe('http://base/p');
   });
 
+  it('retains Turtle comments without treating hashes in IRIs or literals as comments', async () => {
+    const parser = new MillianRDFParser();
+    const res = await parser.parse([
+      '# document comment',
+      '@prefix ex: <http://example.com/#> .',
+      'ex:s ex:p "a # inside a literal" ; # inline comment',
+      '  # predicate comment',
+      '  ex:q ex:o .',
+      '# footer comment',
+    ].join('\n'));
+
+    expect(res.comments?.map(comment => comment.image)).toEqual([
+      '# document comment',
+      '# inline comment',
+      '# predicate comment',
+      '# footer comment',
+    ]);
+    expect(res.comments?.every(comment => comment.startOffset >= 0)).toBe(true);
+  });
+
 });
 
 
