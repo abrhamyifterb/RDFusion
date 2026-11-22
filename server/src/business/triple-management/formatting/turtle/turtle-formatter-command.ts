@@ -8,6 +8,10 @@ import { PrefixRegistry } from '../../../autocomplete/prefix/prefix-registry';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { TurtleFormatter } from './turtle-formatter';
 import { TurtleCommentPreservationError } from './turtle-comment-preserver.js';
+import {
+	assertTurtleTransformationSafe,
+	TurtleTransformationSafetyError,
+} from './turtle-transformation-verifier.js';
 
 
 
@@ -58,6 +62,7 @@ export class TurtleFormatterCommand {
 				this.configSettings.turtle.formatting,
 				doc.getText(),
 			);
+			await assertTurtleTransformationSafe(doc.getText(), formattedText, uri, this.connection);
 
 			if (this.documents.get(uri)?.version !== doc.version) {
 				this.connection.window.showWarningMessage('Turtle formatting was cancelled because the document changed while formatting.');
@@ -70,7 +75,10 @@ export class TurtleFormatterCommand {
 				changes: { [uri]: [ TextEdit.replace(fullRange, formattedText) ] }
 			});
 		} catch (error: any) {
-			if (error instanceof TurtleCommentPreservationError) {
+			if (
+				error instanceof TurtleCommentPreservationError
+				|| error instanceof TurtleTransformationSafetyError
+			) {
 				this.connection.window.showWarningMessage(error.message);
 			}
 			this.connection.console.error(`[Turtle Formatter] Failed to format Turtle: ${error.message || error.toString()}`);
