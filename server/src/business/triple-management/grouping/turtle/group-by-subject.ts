@@ -143,7 +143,7 @@ export class GroupFormatter {
         return `_:${id}`;
       }
 
-      let lit = `"${t.value}"`;
+      let lit = JSON.stringify(t.value);
       const litLang = (t as any).language;
       const litDatatype = (t as any).datatype.value;
 

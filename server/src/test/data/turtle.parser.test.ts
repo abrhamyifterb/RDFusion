@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import MillianRDFParser from '../../data/turtle/ttl-parser';
+import { TurtleCstToQuadsVisitor } from '../../data/turtle/cst-to-quads-visitor';
 
 
 const FIX = (name: string) => readFileSync(join(__dirname, '..', 'fixtures', name), 'utf8');
@@ -50,18 +51,49 @@ describe('data/turtle: MillianRDFParser', () => {
     expect(res.comments?.every(comment => comment.startOffset >= 0)).toBe(true);
   });
 
-  it('reports visitor conversion failures and discards partial quads', async () => {
+  it.each([
+    ['double-quoted', '"double quoted"', 'double quoted'],
+    ['single-quoted', "'single quoted'", 'single quoted'],
+    ['long double-quoted', '"""long\ndouble quoted"""', 'long\ndouble quoted'],
+    ['long single-quoted', "'''long\nsingle quoted'''", 'long\nsingle quoted'],
+  ])('parses %s string literals without retaining delimiters', async (_name, lexical, expected) => {
     const parser = new MillianRDFParser();
     const res = await parser.parse([
       '@prefix ex: <http://example.com/> .',
-      'ex:complete ex:p ex:o .',
-      "ex:unsupported ex:p '''line one",
-      "line two''' .",
+      `ex:s ex:p ${lexical} . # adjacent comment`,
     ].join('\n'));
 
-    expect(res.errors).toHaveLength(1);
-    expect(res.errors?.[0].message).toContain('Turtle graph conversion failed');
-    expect(res.quads).toEqual([]);
+    expect(res.errors).toHaveLength(0);
+    expect(res.quads).toHaveLength(1);
+    expect(res.quads[0].object.value).toBe(expected);
+    expect(res.comments?.map(comment => comment.image)).toEqual(['# adjacent comment']);
+  });
+
+  it('decodes standard Turtle character and Unicode escapes in string literals', async () => {
+    const parser = new MillianRDFParser();
+    const source = String.raw`@prefix ex: <http://example.com/> .
+ex:s ex:p "line\nquote \" apostrophe \' slash \\ unicode \u263A \U0001F642" .`;
+    const res = await parser.parse(source);
+
+    expect(res.errors).toHaveLength(0);
+    expect(res.quads).toHaveLength(1);
+    expect(res.quads[0].object.value).toBe('line\nquote " apostrophe \' slash \\ unicode ☺ 🙂');
+  });
+
+  it('reports visitor conversion failures and discards partial results', async () => {
+    const visit = vi.spyOn(TurtleCstToQuadsVisitor.prototype, 'visitTurtleDoc')
+      .mockImplementation(() => {throw new Error('forced visitor failure');});
+
+    try {
+      const parser = new MillianRDFParser();
+      const res = await parser.parse('@prefix ex: <http://example.com/> .\nex:s ex:p ex:o .');
+
+      expect(res.errors).toHaveLength(1);
+      expect(res.errors?.[0].message).toContain('Turtle graph conversion failed: forced visitor failure');
+      expect(res.quads).toEqual([]);
+    } finally {
+      visit.mockRestore();
+    }
   });
 
   it('does not attempt quad conversion after a semantic parse error', async () => {

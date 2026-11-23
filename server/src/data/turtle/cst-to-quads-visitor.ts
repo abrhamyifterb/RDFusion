@@ -11,6 +11,28 @@ function normalizeDatatype(dt: string): string {
   return dt;
 }
 
+const TURTLE_CHARACTER_ESCAPES: Record<string, string> = {
+  t: '\t',
+  b: '\b',
+  n: '\n',
+  r: '\r',
+  f: '\f',
+  '"': '"',
+  "'": "'",
+  '\\': '\\',
+};
+
+function decodeTurtleString(value: string): string {
+  return value.replace(
+    /\\(?:u([0-9A-Fa-f]{4})|U([0-9A-Fa-f]{8})|([tbnrf"'\\]))/g,
+    (_match, shortUnicode: string | undefined, longUnicode: string | undefined, escaped: string | undefined) => {
+      const unicode = shortUnicode ?? longUnicode;
+      if (unicode) {return String.fromCodePoint(Number.parseInt(unicode, 16));}
+      return escaped ? TURTLE_CHARACTER_ESCAPES[escaped] : _match;
+    },
+  );
+}
+
 interface Position {
   startLine?: number;
   startColumn?: number;
@@ -255,10 +277,14 @@ export class TurtleCstToQuadsVisitor {
 
   private visitRDFLiteral(node: any): any {
     const strNode = node.children.String[0];
-    const tok = strNode.children.STRING_LITERAL_QUOTE?.[0]
-      || strNode.children.STRING_LITERAL_LONG_QUOTE?.[0]
+    const shortToken = strNode.children.STRING_LITERAL_QUOTE?.[0]
       || strNode.children.STRING_LITERAL_SINGLE_QUOTE?.[0];
-    const text = tok.image.slice(1, -1);
+    const longToken = strNode.children.STRING_LITERAL_LONG_QUOTE?.[0]
+      || strNode.children.STRING_LITERAL_LONG_SINGLE_QUOTE?.[0];
+    const token = shortToken ?? longToken;
+    if (!token) {throw new Error('Unrecognized string literal');}
+    const delimiterLength = longToken ? 3 : 1;
+    const text = decodeTurtleString(token.image.slice(delimiterLength, -delimiterLength));
 
     if (node.children.DoubleCaret) {
       const dtTerm = this.visitIri(node.children.iri[0]);

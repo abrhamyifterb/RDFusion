@@ -3,6 +3,7 @@ import type { Connection, TextDocuments } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import type { PrefixRegistry } from '../../../business/autocomplete/prefix/prefix-registry';
 import { TurtleFormatterCommand } from '../../../business/triple-management/formatting/turtle/turtle-formatter-command';
+import { TurtleFormatter } from '../../../business/triple-management/formatting/turtle/turtle-formatter';
 import { assertTurtleTransformationSafe } from '../../../business/triple-management/formatting/turtle/turtle-transformation-verifier';
 import type { DataManager } from '../../../data/data-manager';
 import MillianRDFParser from '../../../data/turtle/ttl-parser';
@@ -53,14 +54,6 @@ const unsafeCases: UnsafeFormattingCase[] = [
 			'@prefix ex: <http://example.com/> .',
 			'@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .',
 			'ex:s ex:p "1"^^xsd:boolean .',
-		].join('\n'),
-	},
-	{
-		name: 'a multiline literal whose whitespace is changed',
-		source: [
-			'@prefix ex: <http://example.com/> .',
-			'ex:s ex:p """line one; still literal',
-			'line two, still literal""" .',
 		].join('\n'),
 	},
 ];
@@ -114,6 +107,31 @@ describe('Turtle transformation verifier', () => {
 		await expect(
 			assertTurtleTransformationSafe(original, formatted, 'file:///reordered.ttl', connection),
 		).resolves.toBeUndefined();
+	});
+
+	it.each([
+		[
+			'long single-quoted',
+			["ex:s ex:p '''line one", "line two''' . # keep this comment"],
+		],
+		[
+			'long double-quoted',
+			['ex:s ex:p """line one', 'line two""" . # keep this comment'],
+		],
+	])('safely formats a %s multiline literal', async (_name, literalLines) => {
+		const source = ['@prefix ex: <http://example.com/> .', ...literalLines].join('\n');
+		const parser = new MillianRDFParser();
+		const parsed = await parser.parse(source);
+		const registry = { getAll: () => [] } as unknown as PrefixRegistry;
+		const output = await new TurtleFormatter().format(parsed, registry, defaultFormattingConfig, source);
+		const connection = { console: { error: vi.fn() } } as unknown as Connection;
+
+		expect(parsed.errors).toHaveLength(0);
+		await expect(
+			assertTurtleTransformationSafe(source, output, 'file:///long-literal.ttl', connection),
+		).resolves.toBeUndefined();
+		expect(output).toContain('# keep this comment');
+		expect((await parser.parse(output)).quads[0].object.value).toBe('line one\nline two');
 	});
 
 	it.each(unsafeCases)('warns and does not edit for $name', async ({ source, config, prefixes }) => {
