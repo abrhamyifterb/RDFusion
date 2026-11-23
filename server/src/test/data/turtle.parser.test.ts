@@ -50,6 +50,29 @@ describe('data/turtle: MillianRDFParser', () => {
     expect(res.comments?.every(comment => comment.startOffset >= 0)).toBe(true);
   });
 
+  it('reports visitor conversion failures and discards partial quads', async () => {
+    const parser = new MillianRDFParser();
+    const res = await parser.parse([
+      '@prefix ex: <http://example.com/> .',
+      'ex:complete ex:p ex:o .',
+      "ex:unsupported ex:p '''line one",
+      "line two''' .",
+    ].join('\n'));
+
+    expect(res.errors).toHaveLength(1);
+    expect(res.errors?.[0].message).toContain('Turtle graph conversion failed');
+    expect(res.quads).toEqual([]);
+  });
+
+  it('does not attempt quad conversion after a semantic parse error', async () => {
+    const parser = new MillianRDFParser();
+    const res = await parser.parse('missing:subject missing:predicate missing:object .');
+
+    expect(res.errors?.length).toBeGreaterThan(0);
+    expect(res.errors?.some(error => error.message?.includes('Turtle graph conversion failed'))).toBe(false);
+    expect(res.quads).toEqual([]);
+  });
+
 });
 
 

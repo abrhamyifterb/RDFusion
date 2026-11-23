@@ -18,8 +18,9 @@ export default class MillianRDFParser implements IRDFParser {
       let prefixes = {} ;
       let tokens: unknown[] = [];
       let quads: unknown[] = [];
+      const visitorErrors: Error[] = [];
       
-      if (!(millianResult.errors.length > 0)) {
+      if (millianResult.errors.length === 0 && millianResult.semanticErrors.length === 0) {
           prefixes = this.millianParser.getNamespacesMap();
           try {
           const visitor = new TurtleCstToQuadsVisitor(prefixes);
@@ -33,8 +34,9 @@ export default class MillianRDFParser implements IRDFParser {
           quads = visitor.visitTurtleDoc(millianResult.cst);
         }
         catch (error:unknown) {
-          console.dir(`Millian visitor parser error: => ${JSON.stringify(error)}`);
-          //return Promise.reject(new Error("Millian visitor parser error: " + error));
+          quads = [];
+          const detail = error instanceof Error ? error.message : String(error);
+          visitorErrors.push(new Error(`Turtle graph conversion failed: ${detail}`));
         }
       }
       return {
@@ -42,7 +44,7 @@ export default class MillianRDFParser implements IRDFParser {
         tokens,
         prefixes,
         comments,
-        errors: [...millianResult.errors, ...millianResult.semanticErrors],
+        errors: [...millianResult.errors, ...millianResult.semanticErrors, ...visitorErrors],
       };
     } catch (error:unknown) {
       console.error('Error while parsing:', error);

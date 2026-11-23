@@ -79,7 +79,6 @@ export class TurtleCstToQuadsVisitor {
   }
 
   private visitStatement(statement: any): void {
-    try{
     if (statement.children.directive) {
       this.visitDirective(statement.children.directive[0]);
     } else if (statement.children.triples) {
@@ -97,9 +96,6 @@ export class TurtleCstToQuadsVisitor {
         this.visitTriple(triple);
       });
     }
-  } catch (error: any) {
-    console.dir(`[GROUP] Subject node error for statement ====> ${JSON.stringify(error)}`);
-  }
   }
   
   private visitDirective(directive: any): void {
@@ -163,29 +159,24 @@ export class TurtleCstToQuadsVisitor {
   }
 
   private visitTriple(triple: any): void {
-    try{
-      const subjNode = triple.children.subject[0];
-      const subject = this.visitSubject(subjNode);
-      const pos = this.extractPosition(subjNode);
+    const subjNode = triple.children.subject[0];
+    const subject = this.visitSubject(subjNode);
+    const pos = this.extractPosition(subjNode);
 
-      triple.children.predicateObjectList.forEach((po: any) => {
-        const pairs = this.visitPredicateObjectList(po);
-        pairs.forEach(pair => {
-          pair.objects.forEach(obj => {
-            const q = quad(subject, pair.predicate, obj, defaultGraph());
-            (q as any).positionToken = pos;
-            this.quads.push(q);
-          });
+    triple.children.predicateObjectList.forEach((po: any) => {
+      const pairs = this.visitPredicateObjectList(po);
+      pairs.forEach(pair => {
+        pair.objects.forEach(obj => {
+          const q = quad(subject, pair.predicate, obj, defaultGraph());
+          (q as any).positionToken = pos;
+          this.quads.push(q);
         });
       });
-    } catch (error: any) {
-      console.dir(`[GROUP] Subject node error ====> ${JSON.stringify(error)}`);
-    }
+    });
   }
 
   private visitPredicateObjectList(poList: any): { predicate: any; objects: any[] }[] {
     const result: { predicate: any; objects: any[] }[] = [];
-    try {
     const verbs = poList.children.verb || [];
     const objLists = poList.children.objectList || [];
 
@@ -206,9 +197,6 @@ export class TurtleCstToQuadsVisitor {
 
       result.push({ predicate, objects });
     });
-  } catch (error: any) {
-    console.dir(`[GROUP] Subject node error visitPredicateObjectList ====> ${JSON.stringify(error)}`);
-  }
     return result;
   }
 

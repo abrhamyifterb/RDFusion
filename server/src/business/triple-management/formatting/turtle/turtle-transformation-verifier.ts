@@ -1,6 +1,6 @@
 import type { Connection } from 'vscode-languageserver';
-import { canonURDNA2015 } from '../../rdf-diff/canonize.js';
-import { turtleToNQuads } from '../../rdf-diff/parse.js';
+import { canonURDNA2015, sortLinesUnique } from '../../rdf-diff/canonize.js';
+import { parseNQuadsToGraph, turtleToNQuads } from '../../rdf-diff/parse.js';
 
 export class TurtleTransformationSafetyError extends Error {
 	constructor(message: string) {
@@ -29,6 +29,19 @@ export async function assertTurtleTransformationSafe(
 ): Promise<void> {
 	const original = await turtleToVerifiedNQuads(originalText, baseIRI, 'original');
 	const formatted = await turtleToVerifiedNQuads(formattedText, baseIRI, 'formatted');
+	const originalHasBlankNodes = parseNQuadsToGraph(original).bnodes.size > 0;
+	const formattedHasBlankNodes = parseNQuadsToGraph(formatted).bnodes.size > 0;
+
+	if (!originalHasBlankNodes && !formattedHasBlankNodes) {
+		if (sortLinesUnique(original) !== sortLinesUnique(formatted)) {
+			throw new TurtleTransformationSafetyError('the generated output changes the RDF data.');
+		}
+		return;
+	}
+
+	if (originalHasBlankNodes !== formattedHasBlankNodes) {
+		throw new TurtleTransformationSafetyError('the generated output changes the RDF data.');
+	}
 
 	let canonicalOriginal: string;
 	let canonicalFormatted: string;

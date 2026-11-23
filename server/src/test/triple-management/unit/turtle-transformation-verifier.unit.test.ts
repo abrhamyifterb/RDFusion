@@ -66,6 +66,28 @@ const unsafeCases: UnsafeFormattingCase[] = [
 ];
 
 describe('Turtle transformation verifier', () => {
+	it.each([
+		['an empty document', '', '', 'file:///empty.ttl'],
+		[
+			'a prefix-only document',
+			'@prefix ex: <http://example.com/> .',
+			'@prefix renamed: <http://example.com/> .',
+			'file:///prefix-only.ttl',
+		],
+		[
+			'relative IRIs',
+			'<subject> <predicate> <object> .',
+			'<subject>\n  <predicate> <object> .',
+			'file:///workspace/document.ttl',
+		],
+	])('accepts equivalent output for %s', async (_name, original, formatted, uri) => {
+		const connection = { console: { error: vi.fn() } } as unknown as Connection;
+
+		await expect(
+			assertTurtleTransformationSafe(original, formatted, uri, connection),
+		).resolves.toBeUndefined();
+	});
+
 	it('accepts equivalent datasets with different blank-node labels', async () => {
 		const original = '@prefix ex: <http://example.com/> .\n_:left ex:p ex:o .';
 		const formatted = '@prefix ex: <http://example.com/> .\n_:right ex:p ex:o .';
@@ -73,6 +95,24 @@ describe('Turtle transformation verifier', () => {
 
 		await expect(
 			assertTurtleTransformationSafe(original, formatted, 'file:///equivalent.ttl', connection),
+		).resolves.toBeUndefined();
+	});
+
+	it('accepts reordered named-node statements without blank-node canonicalization', async () => {
+		const original = [
+			'@prefix ex: <http://example.com/> .',
+			'ex:first ex:p ex:a .',
+			'ex:second ex:p ex:b .',
+		].join('\n');
+		const formatted = [
+			'@prefix renamed: <http://example.com/> .',
+			'renamed:second renamed:p renamed:b .',
+			'renamed:first renamed:p renamed:a .',
+		].join('\n');
+		const connection = { console: { error: vi.fn() } } as unknown as Connection;
+
+		await expect(
+			assertTurtleTransformationSafe(original, formatted, 'file:///reordered.ttl', connection),
 		).resolves.toBeUndefined();
 	});
 
